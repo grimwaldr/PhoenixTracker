@@ -261,6 +261,8 @@ Pick a theme under the cog, from the right-click menu, or with `/ptrack theme`. 
 
 Classic follows Config > Windows > Shared > Window Type in the game's menu, and changes within a second when you change it. To keep one look whatever the game is set to, pick a type under Window type in the settings, or use `/ptrack theme classic <1-8>`. Game goes back to following the game.
 
+Classic also draws its text the way the game draws its own, with a dark one-pixel outline and a slightly heavier stroke, so it stays readable on the busier backgrounds. It uses the same font as the other themes, drawn differently; no font is loaded. Text with characters outside plain English letters and symbols, such as Japanese names, is drawn normally.
+
 The art is read from your own game install (`ROM/0/14.DAT` to `21.DAT`, one file for each Window Type). Nothing from the game ships with the addon. If those files can't be found, Classic says so once in chat and uses plain colours that match the Window Type instead.
 
 To read the Window Type, Classic asks the game's own config for that one setting, the same way Ashita's config addon does. It doesn't read or change anything else.
@@ -291,4 +293,5 @@ Each tab is a module that returns a table with `key`, `label`, `defaults` and th
 - **Skold** made Phoenix Fish Track, which became the Fishing tab, and the Harvesting, Logging, Mining and Excavation tabs.
 - **Grimwald** made the Digging tab and turned the addon into Phoenix Tracker, with a tab for each activity.
 - **Frankie** worked out how to read and draw the game's window art in [craftbook](https://github.com/Frankie-hz/craftbook), which the Classic theme's `skin.lua` is adapted from, along with its colours for each Window Type.
+- **Reverie** came up with drawing text in the game's outlined style without loading a font, in phoenixchat. Classic's text uses the same idea.
 - **Slowed** made the On the Line panel that lists what could be on your line, and the On Hook Display choices that show whether to reel in.

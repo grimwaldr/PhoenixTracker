@@ -106,6 +106,31 @@ class ThemeTests(unittest.TestCase):
                     self.h.settings.tab = tab
                     self.render()
 
+    def drawn(self):
+        return list(self.h.lua.globals().drawn_text.values())
+
+    def test_classic_draws_game_style_text_and_the_others_do_not(self):
+        self.h.settings.tab = 'dig'
+        for theme, outlined in (('phoenix', False), ('neutral', False), ('classic', True)):
+            with self.subTest(theme=theme):
+                self.h.lua.execute('drawn_text = {}')
+                self.h.settings.theme = theme
+                self.render()
+                # Each outlined line is drawn ten times: eight outline copies and two for the stroke.
+                self.assertEqual(self.drawn().count('DAILY FINDS'), 10 if outlined else 0)
+                self.assertEqual(self.drawn().count('Session'), 10 if outlined else 0)
+
+    def test_classic_still_draws_text_outside_plain_ascii_the_normal_way(self):
+        ui = self.h.load('ui')
+        self.command('/ptrack theme classic 1')
+        self.render()
+        self.h.lua.execute('drawn_text = {}')
+        ui.text(ui.COLOR.text, 'Nameの')
+        ui.text(ui.COLOR.text, 'Plain')
+        self.assertNotIn('Nameの', self.drawn())
+        self.assertIn('Nameの', self.h.text)
+        self.assertEqual(self.drawn().count('Plain'), 10)
+
 
 if __name__ == '__main__':
     unittest.main()

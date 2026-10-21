@@ -203,7 +203,9 @@ local function classic_theme(window_type)
             -- The frame comes from the art.
             WindowBorderSize = 0.0,
         },
-        skin = window_type,
+        skin    = window_type,
+        -- Text is drawn the way the game draws its own: a dark outline and a slightly heavier stroke.
+        outline = true,
     };
 end
 
@@ -346,6 +348,10 @@ function ui.vec2(a, b)
     if (type(a) == 'table') then
         return a.x or a[1], a.y or a[2];
     end
+    -- Style values such as FramePadding arrive as ImGui vector objects with x and y fields.
+    if (a ~= nil and type(a) ~= 'number') then
+        return a.x, a.y;
+    end
     return a, b;
 end
 
@@ -357,15 +363,132 @@ function ui.text_width(text)
     return width or 0;
 end
 
+-----------------------------------
+-- Game-style text
+-----------------------------------
+-- Themes with outline set (Classic) draw text the way the game draws its own: eight dark copies
+-- one pixel out on every side for the outline, then the text twice, 0.6 pixels apart, for a slightly
+-- heavier stroke. It uses the font ImGui already has; nothing is loaded into ImGui's font atlas.
+-- The idea comes from Reverie's phoenixchat. Text with characters outside plain ASCII, such as
+-- Japanese names, is drawn the normal way.
+local OUTLINE = { { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 }, { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } };
+local aligned_y = nil;
+
+local function outlined()
+    return current.theme ~= nil and current.theme.outline == true;
+end
+
+local function plain(text)
+    return type(text) == 'string' and not text:find('[^\32-\126]');
+end
+
+-- Draws text at a screen position, outlined when the theme asks for it. color is an RGBA table.
+function ui.add_text(list, x, y, color, text)
+    local font  = imgui.GetFont();
+    local size  = imgui.GetFontSize();
+    local fill  = imgui.GetColorU32(color);
+    if (outlined()) then
+        local reach = math.max(1, math.floor(size / 24 + 0.5));
+        local dark  = imgui.GetColorU32({ 0, 0, 0, color[4] or 1 });
+        for _, offset in ipairs(OUTLINE) do
+            list:AddText(font, size, { x + offset[1] * reach, y + offset[2] * reach }, dark, text);
+        end
+        list:AddText(font, size, { x + 0.6, y }, fill, text);
+    end
+    list:AddText(font, size, { x, y }, fill, text);
+end
+
+-- Use in place of imgui.AlignTextToFramePadding, so text on this line lines up with the buttons
+-- beside it under every theme.
+function ui.align_to_frame()
+    imgui.AlignTextToFramePadding();
+    local _, y = ui.vec2(imgui.GetCursorScreenPos());
+    aligned_y = y;
+end
+
+-- Use in place of imgui.TextColored.
+function ui.text(color, text)
+    if (not outlined() or not plain(text)) then
+        imgui.TextColored(color, text);
+        return;
+    end
+
+    local x, y   = ui.vec2(imgui.GetCursorScreenPos());
+    local height = imgui.GetTextLineHeight();
+    -- On a line lined up with buttons, text sits down by the frame padding, as ImGui's own does.
+    if (aligned_y ~= nil and math.abs(y - aligned_y) < 0.5) then
+        local _, pad = ui.vec2(imgui.GetStyle().FramePadding);
+        y      = y + pad;
+        height = imgui.GetFrameHeight();
+    end
+    ui.add_text(imgui.GetWindowDrawList(), x, y, color, text);
+    imgui.Dummy({ math.max(ui.text_width(text), 1), height });
+end
+
+-- Text that wraps before wrap_x (in window coordinates, as imgui.PushTextWrapPos takes).
+function ui.wrapped(color, text, wrap_x)
+    if (not outlined() or not plain(text)) then
+        imgui.PushTextWrapPos(wrap_x);
+        imgui.TextColored(color, text);
+        imgui.PopTextWrapPos();
+        return;
+    end
+
+    local room  = wrap_x - imgui.GetCursorPosX();
+    local lines = {};
+    local line  = '';
+    for word in text:gmatch('%S+') do
+        local longer = (line == '') and word or (line .. ' ' .. word);
+        if (line ~= '' and ui.text_width(longer) > room) then
+            lines[#lines + 1] = line;
+            line = word;
+        else
+            line = longer;
+        end
+    end
+    if (line ~= '') then
+        lines[#lines + 1] = line;
+    end
+
+    local x, y   = ui.vec2(imgui.GetCursorScreenPos());
+    local height = imgui.GetTextLineHeight();
+    local list   = imgui.GetWindowDrawList();
+    local widest = 1;
+    for index, piece in ipairs(lines) do
+        ui.add_text(list, x, y + (index - 1) * height, color, piece);
+        widest = math.max(widest, ui.text_width(piece));
+    end
+    imgui.Dummy({ widest, math.max(1, #lines) * height });
+end
+
+-- Use in place of imgui.CollapsingHeader. Under an outlined theme the header draws its label in
+-- a see-through colour, so it keeps the same ID (and open or closed state), and the outlined label
+-- goes on top.
+function ui.header(label, flags)
+    if (not outlined() or not plain(label)) then
+        return imgui.CollapsingHeader(label, flags);
+    end
+
+    -- Where ImGui puts a framed header's label: from the cursor (the frame itself reaches a little
+    -- further left), past the arrow, inside the frame padding.
+    local x, y         = ui.vec2(imgui.GetCursorScreenPos());
+    local pad_x, pad_y = ui.vec2(imgui.GetStyle().FramePadding);
+    imgui.PushStyleColor(ImGuiCol_Text, COLOR.clear);
+    local open = imgui.CollapsingHeader(label, flags);
+    imgui.PopStyleColor(1);
+    ui.add_text(imgui.GetWindowDrawList(), x + imgui.GetFontSize() + pad_x * 3, y + pad_y, COLOR.text, label);
+    return open;
+end
+
 function ui.right_text(width, color, text)
     imgui.SameLine(ui.PADDING + width - ui.text_width(text));
-    imgui.TextColored(color, text);
+    ui.text(color, text);
 end
 
 function ui.stat_cell(label, value, color)
     imgui.TableNextColumn();
-    imgui.TextColored(COLOR.muted, label);
-    imgui.TextColored(color or COLOR.text, value);
+    ui.text(COLOR.muted, label);
+    ui.text(color or COLOR.text, value);
 end
 
 function ui.toggle_button(label, on, width)
@@ -373,8 +496,21 @@ function ui.toggle_button(label, on, width)
     imgui.PushStyleColor(ImGuiCol_ButtonHovered, on and COLOR.hover or COLOR.button_hover);
     imgui.PushStyleColor(ImGuiCol_ButtonActive, COLOR.royal);
     imgui.PushStyleColor(ImGuiCol_Text, on and COLOR.text or COLOR.muted);
-    local clicked = imgui.Button(label, { width, 0 });
+    local shown = label:match('^(.-)##') or label;
+    if (not outlined() or shown == '' or not plain(shown)) then
+        local clicked = imgui.Button(label, { width, 0 });
+        imgui.PopStyleColor(4);
+        return clicked;
+    end
+
+    -- The button draws no label of its own; the outlined one goes in its centre.
+    local clicked = imgui.Button('##' .. label, { width, 0 });
     imgui.PopStyleColor(4);
+    local x0, y0 = ui.vec2(imgui.GetItemRectMin());
+    local x1, y1 = ui.vec2(imgui.GetItemRectMax());
+    local x = (x0 + x1 - ui.text_width(shown)) / 2;
+    local y = (y0 + y1 - imgui.GetTextLineHeight()) / 2;
+    ui.add_text(imgui.GetWindowDrawList(), x, y, on and COLOR.text or COLOR.muted, shown);
     return clicked;
 end
 

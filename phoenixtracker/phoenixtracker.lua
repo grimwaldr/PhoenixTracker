@@ -132,10 +132,10 @@ local function draw_header(width, scale, tab)
     local day       = ('%s JST'):fmt(tab.day());
     local cog_width = text_width(COG) + 12 * scale;
 
-    imgui.AlignTextToFramePadding();
-    imgui.TextColored(COLOR.peach, who);
+    ui.align_to_frame();
+    ui.text(COLOR.peach, who);
     imgui.SameLine(PADDING + width - cog_width - 8 - text_width(day));
-    imgui.TextColored(COLOR.muted, day);
+    ui.text(COLOR.muted, day);
     imgui.SameLine(PADDING + width - cog_width);
     if (toggle_button('##pt_settings', pt.show_settings, cog_width)) then
         pt.show_settings = not pt.show_settings;
@@ -147,7 +147,7 @@ local function draw_header(width, scale, tab)
     local x1, y1 = imgui.GetItemRectMax();
     local pos    = { (x0 + x1 - glyph.X0 - glyph.X1) / 2, (y0 + y1 - glyph.Y0 - glyph.Y1) / 2 };
     local color  = pt.show_settings and COLOR.text or COLOR.muted;
-    imgui.GetWindowDrawList():AddText(pos, imgui.GetColorU32(color), COG);
+    ui.add_text(imgui.GetWindowDrawList(), pos[1], pos[2], color, COG);
 end
 
 -- Uses the same toggle buttons as the rest of the window rather than an ImGui tab bar, so it matches
@@ -199,15 +199,15 @@ local function setting_slider(id, key, low, high, format, step, width, live)
 end
 
 local function menu_slider(label, key, low, high, format, step, live)
-    imgui.TextColored(COLOR.muted, label);
+    ui.text(COLOR.muted, label);
     setting_slider('menu', key, low, high, format, step, 160, live);
 end
 
 -- The label column fits the longest label at the current font, so no label is clipped at small scales.
 local function settings_row(label, key, low, high, format, step, width, live)
     local indent = math.max(text_width('Scale'), text_width('Opacity')) + 8;
-    imgui.AlignTextToFramePadding();
-    imgui.TextColored(COLOR.muted, label);
+    ui.align_to_frame();
+    ui.text(COLOR.muted, label);
     imgui.SameLine(PADDING + indent);
     setting_slider('panel', key, low, high, format, step, width - indent, live);
 end
@@ -215,7 +215,7 @@ end
 -- Theme buttons, and for Classic which Window Type to wear: Game follows the in-game setting.
 local function draw_theme_picker(width)
     imgui.Spacing();
-    imgui.TextColored(COLOR.muted, 'Theme');
+    ui.text(COLOR.muted, 'Theme');
     local button_width = (width - (#ui.THEMES - 1) * 8) / #ui.THEMES;
     for index, theme in ipairs(ui.THEMES) do
         if (index > 1) then
@@ -229,7 +229,7 @@ local function draw_theme_picker(width)
     if (ctx.settings.theme ~= 'classic') then
         return;
     end
-    imgui.TextColored(COLOR.muted, 'Window type');
+    ui.text(COLOR.muted, 'Window type');
     local labels = { 'Game', '1', '2', '3', '4', '5', '6', '7', '8' };
     local small  = (width - (#labels - 1) * 8) / #labels;
     for index, label in ipairs(labels) do
@@ -249,7 +249,7 @@ local function draw_settings(width, tab)
     end
 
     imgui.Spacing();
-    imgui.TextColored(COLOR.muted, 'SETTINGS');
+    ui.text(COLOR.muted, 'SETTINGS');
     settings_row('Scale', 'scale', 0.5, 3.0, '%.2f', 0.05, width, false);
     settings_row('Opacity', 'alpha', 0.3, 1.0, '%.2f', 0.01, width, true);
 

@@ -520,16 +520,14 @@ end
 
 -- Wraps at the window edge, so a long note doesn't stretch the auto-sized window.
 local function note(width, color, text)
-    imgui.PushTextWrapPos(PADDING + width);
-    imgui.TextColored(color, text);
-    imgui.PopTextWrapPos();
+    ui.wrapped(color, text, PADDING + width);
 end
 
 local function info_line(label, value, color)
     local indent = math.max(text_width('Zone:'), text_width('Greens:')) + 8;
-    imgui.TextColored(COLOR.muted, label);
+    ui.text(COLOR.muted, label);
     imgui.SameLine(PADDING + indent);
-    imgui.TextColored(color, value);
+    ui.text(color, value);
 end
 
 local function next_dig_in()
@@ -575,16 +573,16 @@ local function draw_daily(width, scale, font, font_size)
     local done  = daily.finds >= DAILY_LIMIT;
 
     imgui.Spacing();
-    imgui.TextColored(COLOR.muted, 'DAILY FINDS');
+    ui.text(COLOR.muted, 'DAILY FINDS');
 
     imgui.PushFont(font, font_size * 2.0);
     local big = imgui.GetFontSize();
-    imgui.TextColored(done and COLOR.success or COLOR.text, tostring(daily.finds));
+    ui.text(done and COLOR.success or COLOR.text, tostring(daily.finds));
     imgui.PopFont();
     local small = imgui.GetFontSize();
     imgui.SameLine();
     imgui.SetCursorPosY(imgui.GetCursorPosY() + (big - small) * 0.8);
-    imgui.TextColored(COLOR.muted, ('/ %d'):fmt(DAILY_LIMIT));
+    ui.text(COLOR.muted, ('/ %d'):fmt(DAILY_LIMIT));
     right_text(width, COLOR.ember, ('%d%%'):fmt(math.floor(math.min(daily.finds, DAILY_LIMIT) * 100 / DAILY_LIMIT)));
 
     imgui.PushStyleColor(ImGuiCol_PlotHistogram, done and COLOR.success or COLOR.royal);
@@ -592,7 +590,7 @@ local function draw_daily(width, scale, font, font_size)
     imgui.PopStyleColor(1);
 
     local reset_in = seconds_until_reset();
-    imgui.TextColored(COLOR.secondary, ('%d left'):fmt(math.max(0, DAILY_LIMIT - daily.finds)));
+    ui.text(COLOR.secondary, ('%d left'):fmt(math.max(0, DAILY_LIMIT - daily.finds)));
     right_text(width, COLOR.muted, ('resets %s (%s)'):fmt(os.date('%H:%M', os.time() + reset_in), duration(reset_in)));
 
     if (done) then
@@ -602,7 +600,7 @@ local function draw_daily(width, scale, font, font_size)
 end
 
 local function draw_session(width)
-    if (not imgui.CollapsingHeader('Session', ImGuiTreeNodeFlags_DefaultOpen)) then
+    if (not ui.header('Session', ImGuiTreeNodeFlags_DefaultOpen)) then
         return;
     end
 
@@ -667,22 +665,22 @@ local function draw_session(width)
 end
 
 local function draw_wing(width, scale, pool)
-    if (not imgui.CollapsingHeader('Wing Skill', ImGuiTreeNodeFlags_DefaultOpen)) then
+    if (not ui.header('Wing Skill', ImGuiTreeNodeFlags_DefaultOpen)) then
         return;
     end
 
     local wing = pd.wing;
     if (not wing) then
-        imgui.TextColored(COLOR.danger, 'Wing skill unknown.');
+        ui.text(COLOR.danger, 'Wing skill unknown.');
         right_text(width, pd.session.xp > 0 and COLOR.success or COLOR.muted, ('+%d XP'):fmt(pd.session.xp));
         note(width, COLOR.faint, 'Talk to a chocobo stable clerk (South San d\'Oria, Bastok Mines or Windurst Woods), or use /pdig skill <level>. A wing skill level-up also sets it.');
         return;
     end
 
     local rank = math.min(10, math.floor(wing.level / 10));
-    imgui.TextColored(COLOR.text, ('Level %d'):fmt(wing.level));
+    ui.text(COLOR.text, ('Level %d'):fmt(wing.level));
     imgui.SameLine();
-    imgui.TextColored(COLOR.peach, RANK_NAMES[rank] or '');
+    ui.text(COLOR.peach, RANK_NAMES[rank] or '');
 
     local gained = ('+%d XP'):fmt(pd.session.xp);
     if (pd.session.levels > 0) then
@@ -691,7 +689,7 @@ local function draw_wing(width, scale, pool)
     right_text(width, pd.session.xp > 0 and COLOR.success or COLOR.muted, gained);
 
     if (wing.level >= MAX_LEVEL) then
-        imgui.TextColored(COLOR.gold, 'Wing skill capped.');
+        ui.text(COLOR.gold, 'Wing skill capped.');
         return;
     end
 
@@ -706,7 +704,7 @@ local function draw_wing(width, scale, pool)
     else
         xp_text = ('%d-%d / %d XP'):fmt(lo, hi, need);
     end
-    imgui.TextColored(COLOR.secondary, xp_text);
+    ui.text(COLOR.secondary, xp_text);
 
     if (pool and pool.avg_xp > 0) then
         local left   = need - (lo + hi) / 2;
@@ -721,11 +719,11 @@ local function draw_wing(width, scale, pool)
 end
 
 local function draw_pool(width, scale, pool)
-    if (not imgui.CollapsingHeader('Possible Finds')) then
+    if (not ui.header('Possible Finds')) then
         return;
     end
     if (not pool) then
-        imgui.TextColored(COLOR.faint, 'You can\'t dig in this zone.');
+        ui.text(COLOR.faint, 'You can\'t dig in this zone.');
         return;
     end
 
@@ -738,11 +736,11 @@ local function draw_pool(width, scale, pool)
         for _, row in ipairs(pool.rows) do
             imgui.TableNextRow();
             imgui.TableNextColumn();
-            imgui.TextColored(row.night and COLOR.peach or COLOR.secondary, item_name(row.id));
+            ui.text(row.night and COLOR.peach or COLOR.secondary, item_name(row.id));
             imgui.TableNextColumn();
-            imgui.TextColored(COLOR.muted, tostring(row.xp));
+            ui.text(COLOR.muted, tostring(row.xp));
             imgui.TableNextColumn();
-            imgui.TextColored(COLOR.text, percent(row.odds));
+            ui.text(COLOR.text, percent(row.odds));
         end
         imgui.EndTable();
     end
@@ -763,7 +761,7 @@ local function draw_pool(width, scale, pool)
 end
 
 local function draw_finds(width, scale)
-    if (not imgui.CollapsingHeader('Today\'s Dig', ImGuiTreeNodeFlags_DefaultOpen)) then
+    if (not ui.header('Today\'s Dig', ImGuiTreeNodeFlags_DefaultOpen)) then
         return;
     end
 
@@ -773,7 +771,7 @@ local function draw_finds(width, scale)
     end
 
     if (#rows == 0 and pd.daily.thrown == 0) then
-        imgui.TextColored(COLOR.faint, 'Nothing dug up yet today.');
+        ui.text(COLOR.faint, 'Nothing dug up yet today.');
         return;
     end
 
@@ -798,16 +796,16 @@ local function draw_finds(width, scale)
         for _, row in ipairs(rows) do
             imgui.TableNextRow();
             imgui.TableNextColumn();
-            imgui.TextColored(COLOR.secondary, row.name);
+            ui.text(COLOR.secondary, row.name);
             imgui.TableNextColumn();
-            imgui.TextColored(COLOR.text, tostring(row.quantity));
+            ui.text(COLOR.text, tostring(row.quantity));
         end
         if (pd.daily.thrown > 0) then
             imgui.TableNextRow();
             imgui.TableNextColumn();
-            imgui.TextColored(COLOR.danger, 'Thrown away (inventory full)');
+            ui.text(COLOR.danger, 'Thrown away (inventory full)');
             imgui.TableNextColumn();
-            imgui.TextColored(COLOR.text, tostring(pd.daily.thrown));
+            ui.text(COLOR.text, tostring(pd.daily.thrown));
         end
         imgui.EndTable();
     end
