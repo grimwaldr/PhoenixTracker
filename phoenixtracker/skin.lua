@@ -5,8 +5,9 @@
 -- Nothing from the game ships with the addon.
 require('common');
 
-local chat  = require('chat');
-local d3d   = require('d3d8');
+local chat    = require('chat');
+local datfile = require('datfile');
+local d3d     = require('d3d8');
 local ffi   = require('ffi');
 local imgui = require('imgui');
 local C     = ffi.C;
@@ -28,21 +29,12 @@ local CONFIG_GET_SIGNATURE = '8B0D????????85C974??8B44240450E8????????C383C8FFC3
 local WINDOW_TYPE_KEY      = 18;
 local POLL_SECONDS         = 1;
 
-local CHUNK_HEADER  = 16;
-local TEXTURE_CHUNK = 0x20;
-local MAX_CHUNKS    = 32;
-local DXT_TEXTURE   = 0xA1;
-local NAME_FIRST    = 10;
-local NAME_LAST     = 17;
-local INFO_OFFSET   = 17;
-local FORMAT_EXTRA  = 12;
-local PARTS         = { 'newtex', 'hfr1', 'vfr1', 'corner' };
+local PARTS = { 'newtex', 'hfr1', 'vfr1', 'corner' };
 
-local DDS_HEADER_SIZE = 124;
-local DDS_FLAGS       = 0x81007;
-local DDS_PIXELFORMAT = 32;
-local DDS_FOURCC      = 0x4;
-local DDS_TEXTURE     = 0x1000;
+-- The game's text font lives in its main UI file. Each region's client uses its own copy; 119/51 is
+-- the one the English font mods replace, so it's tried first.
+local FONT_FILES  = { 'ROM\\119\\51.DAT', 'ROM\\118\\111.DAT', 'ROM\\91\\15.DAT', 'ROM\\0\\1.DAT' };
+local FONT_CHUNKS = 4096;
 
 local D3DX_FROM_FILE   = 0xFFFFFFFF;
 local D3DX_FILTER_NONE = 1;
@@ -148,8 +140,8 @@ local function registered_client_folder()
     return ashita.fs.get_install_dir(language, PLAYONLINE_FFXI);
 end
 
-local function read_skin_file(window_type)
-    local name    = ('%s\\%d.DAT'):fmt(SKIN_FOLDER, FIRST_SKIN_FILE + window_type);
+-- One of the game's own files (a name like 'ROM\0\14.DAT') as a string, or nil. Read-only.
+local function read_rom(name)
     local finders = { running_client_folder, registered_client_folder };
     for _, finder in ipairs(finders) do
         local ok, folder = pcall(finder);
@@ -165,88 +157,16 @@ local function read_skin_file(window_type)
     return nil;
 end
 
-local function read_u32(data, offset)
-    local a, b, c, d = data:byte(offset + 1, offset + 4);
-    return a + b * 256 + c * 65536 + d * 16777216;
-end
-
-local function write_u32(value)
-    return string.char(value % 256, math.floor(value / 256) % 256, math.floor(value / 65536) % 256, math.floor(value / 16777216) % 256);
-end
-
--- Wraps the DAT's raw DXT blocks in a DDS header so D3DX can load them as a file.
-local function as_dds(width, height, fourcc, blocks)
-    local zero = write_u32(0);
-    return table.concat({
-        'DDS ', write_u32(DDS_HEADER_SIZE), write_u32(DDS_FLAGS), write_u32(height), write_u32(width), write_u32(#blocks), zero, zero,
-        zero:rep(11),
-        write_u32(DDS_PIXELFORMAT), write_u32(DDS_FOURCC), fourcc, zero:rep(5),
-        write_u32(DDS_TEXTURE), zero:rep(4),
-        blocks,
-    });
-end
-
--- One texture chunk: a flag byte, a 16 character name, a BITMAPINFOHEADER, the format tag, then the pixel blocks.
-local function read_texture(body)
-    if (#body < INFO_OFFSET + 12 or body:byte(1) ~= DXT_TEXTURE) then
-        return nil, nil;
-    end
-
-    local name   = body:sub(NAME_FIRST, NAME_LAST):gsub('%s+$', '');
-    local width  = read_u32(body, INFO_OFFSET + 4);
-    local height = read_u32(body, INFO_OFFSET + 8);
-    local format = INFO_OFFSET + read_u32(body, INFO_OFFSET);
-    local fourcc = body:sub(format + 1, format + 4):reverse();
-    if (fourcc:match('^DXT[1-5]$') == nil) then
-        return nil, nil;
-    end
-
-    local block_size = 16;
-    if (fourcc == 'DXT1') then
-        block_size = 8;
-    end
-    local length = math.ceil(width / 4) * math.ceil(height / 4) * block_size;
-    local blocks = body:sub(format + FORMAT_EXTRA + 1, format + FORMAT_EXTRA + length);
-    if (#blocks ~= length) then
-        return nil, nil;
-    end
-    return name, as_dds(width, height, fourcc, blocks);
-end
-
--- Walks the DAT's chunks and returns the DDS image of every texture, keyed by name.
-local function read_textures(data)
-    local images = {};
-    local offset = 0;
-    for _ = 1, MAX_CHUNKS do
-        if (offset + CHUNK_HEADER > #data) then
-            break;
-        end
-
-        local packed = read_u32(data, offset + 4);
-        local kind   = packed % 128;
-        local size   = (math.floor(packed / 128) % 0x80000) * 16;
-        if (size == 0) then
-            break;
-        end
-        if (kind == TEXTURE_CHUNK) then
-            local name, image = read_texture(data:sub(offset + CHUNK_HEADER + 1, offset + size));
-            if (name ~= nil) then
-                images[name] = image;
-            end
-        end
-        offset = offset + size;
-    end
-    return images;
-end
-
-local function create_texture(image)
-    local texture = ffi.new('IDirect3DTexture8*[1]');
-    local result  = C.D3DXCreateTextureFromFileInMemoryEx(d3d.get_device(), image, #image, D3DX_FROM_FILE, D3DX_FROM_FILE, 1, 0, C.D3DFMT_A8R8G8B8, C.D3DPOOL_MANAGED, D3DX_FILTER_NONE, C.D3DX_DEFAULT, 0, nil, nil, texture);
+-- A texture read by datfile, as a Direct3D texture ImGui can draw: { texture, id }.
+local function create_texture(texture)
+    local image  = datfile.as_dds(texture.width, texture.height, texture.fourcc, texture.blocks);
+    local result_texture = ffi.new('IDirect3DTexture8*[1]');
+    local result = C.D3DXCreateTextureFromFileInMemoryEx(d3d.get_device(), image, #image, D3DX_FROM_FILE, D3DX_FROM_FILE, 1, 0, C.D3DFMT_A8R8G8B8, C.D3DPOOL_MANAGED, D3DX_FILTER_NONE, C.D3DX_DEFAULT, 0, nil, nil, result_texture);
     if (result ~= C.S_OK) then
         return nil;
     end
 
-    local handle = ffi.cast('IDirect3DTexture8*', texture[0]);
+    local handle = ffi.cast('IDirect3DTexture8*', result_texture[0]);
     return { texture = handle, id = tonumber(ffi.cast('uint32_t', handle)) };
 end
 
@@ -256,13 +176,18 @@ local function release_art(art)
     end
 end
 
+local WANTED_PARTS = {};
+for _, name in ipairs(PARTS) do
+    WANTED_PARTS[name] = true;
+end
+
 local function load_art(window_type)
-    local data = read_skin_file(window_type);
+    local data = read_rom(('%s\\%d.DAT'):fmt(SKIN_FOLDER, FIRST_SKIN_FILE + window_type));
     if (data == nil) then
         return nil, 'the window art file was not found in the game install';
     end
 
-    local images = read_textures(data);
+    local images = datfile.textures(data, WANTED_PARTS);
     local art    = {};
     for _, name in ipairs(PARTS) do
         local part = nil;
@@ -300,6 +225,53 @@ function skin.get(window_type)
     return art;
 end
 
+-----------------------------------
+-- The game's text font
+-----------------------------------
+local font_cache = nil;
+
+local function load_font()
+    for _, name in ipairs(FONT_FILES) do
+        local data = read_rom(name);
+        if (data ~= nil) then
+            local moji = datfile.textures(data, { moji = true }, FONT_CHUNKS).moji;
+            local glyphs = moji and datfile.glyph_widths(moji);
+            if (glyphs ~= nil) then
+                local texture = create_texture(moji);
+                if (texture == nil) then
+                    return nil, 'the font texture could not be made';
+                end
+                return {
+                    texture = texture.texture,
+                    id      = texture.id,
+                    width   = moji.width,
+                    height  = moji.height,
+                    glyphs  = glyphs,
+                }, nil;
+            end
+        end
+    end
+    return nil, 'the game\'s font file was not found in the game install';
+end
+
+-- The game's text font: { id, width, height, glyphs }, where glyphs[code] = { left, width } in the
+-- 16 x 16 cell. nil when it can't be used (said once in chat). Read once, the first time it's asked for.
+function skin.font()
+    if (font_cache == nil) then
+        local ok, loaded, reason = pcall(load_font);
+        if (ok and loaded ~= nil) then
+            font_cache = loaded;
+        else
+            font_cache = false;
+            if (not ok) then
+                reason = tostring(loaded);
+            end
+            message(('Classic theme: %s. Using the normal font with an outline.'):fmt(reason));
+        end
+    end
+    return font_cache or nil;
+end
+
 -- Art that failed to load stays marked, so its chat message isn't repeated.
 function skin.release()
     for window_type, art in pairs(cache) do
@@ -307,6 +279,10 @@ function skin.release()
             release_art(art);
             cache[window_type] = nil;
         end
+    end
+    if (font_cache) then
+        font_cache.texture:Release();
+        font_cache = nil;
     end
 end
 

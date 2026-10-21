@@ -67,6 +67,7 @@ If you used Phoenix Fish Track before, unload it with `/addon unload phoenixfish
 | `/ptrack auto` | Turn automatic tab switching on or off |
 | `/ptrack theme <phoenix \| classic \| neutral>` | Change the look. No name lists the themes |
 | `/ptrack theme classic <1-8 \| game>` | Pin Classic to one Window Type, or follow your in-game setting again |
+| `/ptrack font <game \| outline>` | Classic's text in the game's own font, or the normal font with an outline |
 | `/pfish set <count>` / `/pdig set <count>` | Correct today's count |
 | `/pfish account <name>` / `/pdig account <name>` | Share one count between characters on the same account |
 | `/pfish account` / `/pdig account` | Count this character on its own again |
@@ -261,7 +262,9 @@ Pick a theme under the cog, from the right-click menu, or with `/ptrack theme`. 
 
 Classic follows Config > Windows > Shared > Window Type in the game's menu, and changes within a second when you change it. To keep one look whatever the game is set to, pick a type under Window type in the settings, or use `/ptrack theme classic <1-8>`. Game goes back to following the game.
 
-Classic also draws its text the way the game draws its own, with a dark one-pixel outline and a slightly heavier stroke, so it stays readable on the busier backgrounds. It uses the same font as the other themes, drawn differently; no font is loaded. To change the font itself, set it in Ashita's boot configuration under `[ashita.imgui.fonts]`, which changes it for Ashita and every ImGui addon. Text with characters outside plain English letters and symbols, such as Japanese names, is drawn normally.
+Classic also draws its text in the game's own font, read from your install (`ROM/119/51.DAT`, or the other region's copy if that one isn't there): the same letters, outline and spacing as the game's chat. It's a bitmap font, so it's only used at its own size, when the window's scale is 1. At any other scale, and for the large daily count, Classic uses the normal font with a dark outline instead, as it also does for text outside plain English letters and symbols, such as Japanese names. `/ptrack font outline` uses the outlined normal font everywhere, and `/ptrack font game` goes back. No font is loaded into Ashita: the letters are drawn as pictures.
+
+To change the normal font itself, set it in Ashita's boot configuration under `[ashita.imgui.fonts]`, which changes it for Ashita and every ImGui addon.
 
 The art is read from your own game install (`ROM/0/14.DAT` to `21.DAT`, one file for each Window Type). Nothing from the game ships with the addon. If those files can't be found, Classic says so once in chat and uses plain colours that match the Window Type instead.
 
@@ -273,7 +276,8 @@ To read the Window Type, Classic asks the game's own config for that one setting
 |---|---|
 | `phoenixtracker.lua` | The window, header, tabs, settings panel and commands |
 | `ui.lua` | The themes, colours and drawing helpers every tab shares |
-| `skin.lua` | Reads and draws the game's window art for the Classic theme |
+| `skin.lua` | Reads the game's window art and font for the Classic theme, and draws the art |
+| `datfile.lua` | Pulls textures and the font's letter widths out of the game's DAT files |
 | `fishing.lua` | The Fishing tab |
 | `fishdata.lua`, `catchpool.lua`, `offsets.lua`, `rumble.lua` | Fishing data and helpers |
 | `digging.lua` | The Digging tab |

@@ -249,8 +249,10 @@ ICON_FA_GEAR = 'Gear'
 local function noop() end
 -- Text drawn straight onto a window (the outlined game-style text) is recorded, one entry per copy.
 drawn_text = {}
+drawn_images = {}
 local draw_list = setmetatable({
     AddText = function(_, _, _, _, _, text) if text then drawn_text[#drawn_text + 1] = text end end,
+    AddImage = function(_, id) drawn_images[#drawn_images + 1] = id end,
 }, { __index = function() return noop end })
 -- Text is 7px a character at the default 16px font and follows the pushed font size, as ImGui's does.
 local font_sizes = { 16 }

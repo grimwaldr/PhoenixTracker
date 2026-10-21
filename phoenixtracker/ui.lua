@@ -286,6 +286,75 @@ function ui.apply_theme(key, pinned_type)
     return theme;
 end
 
+-----------------------------------
+-- The game's own font
+-----------------------------------
+-- Classic draws plain text in the game's own font, read from the player's install by skin.lua: each
+-- letter is cut from the font sheet (16 x 16 cells, the outline already drawn in) and drawn at its own
+-- width, tinted with the text colour. It's a bitmap that only looks right at its own size, so it's
+-- used when the window is at scale 1 and the text is the normal size; anything else uses the normal
+-- font with an outline.
+local CELL  = 16;
+local GAP   = 1;    -- pixels between letters, as the game spaces its chat
+local SPACE = 4;    -- the width of a space
+
+local frame = { scale = 1, base = nil, game_font = true };
+
+local function plain(text)
+    return type(text) == 'string' and not text:find('[^\32-\126]');
+end
+
+-- Call once a frame, before any window is drawn: the window's scale, and whether Classic may use
+-- the game font.
+function ui.begin_frame(scale, game_font)
+    frame.scale     = scale;
+    frame.game_font = game_font ~= false;
+    frame.base      = imgui.GetFontSize();
+end
+
+-- The game font, when it should draw text at the current size; otherwise nil.
+local function game_font()
+    local theme = current.theme;
+    if (not theme or not theme.outline or not frame.game_font or frame.scale ~= 1 or not frame.base) then
+        return nil;
+    end
+    if (math.abs(imgui.GetFontSize() - frame.base) > 0.01) then
+        return nil;
+    end
+    local module = skin();
+    return module and module.font and module.font() or nil;
+end
+
+local function game_width(font, text)
+    local width = 0;
+    for index = 1, #text do
+        local glyph = font.glyphs[text:byte(index)];
+        width = width + (glyph and (glyph.width + GAP) or SPACE);
+    end
+    return width;
+end
+
+-- Draws the letters on whole pixels, centred in the line, as the game draws its own.
+local function draw_game_text(list, font, x, y, color, text)
+    local x0   = math.floor(x + 0.5);
+    local y0   = math.floor(y + (imgui.GetTextLineHeight() - CELL) / 2 + 0.5);
+    local fill = imgui.GetColorU32(color);
+    for index = 1, #text do
+        local code  = text:byte(index);
+        local glyph = font.glyphs[code];
+        if (glyph) then
+            local cell = code - 0x20;
+            local u    = (cell % 64) * CELL + glyph.left;
+            local v    = math.floor(cell / 64) * CELL;
+            list:AddImage(font.id, { x0, y0 }, { x0 + glyph.width, y0 + CELL },
+                { u / font.width, v / font.height }, { (u + glyph.width) / font.width, (v + CELL) / font.height }, fill);
+            x0 = x0 + glyph.width + GAP;
+        else
+            x0 = x0 + SPACE;
+        end
+    end
+end
+
 -- True when the active theme is drawing the game's window art, so ImGui's own fill is hidden.
 local function art_showing()
     local theme  = current.theme;
@@ -356,6 +425,10 @@ function ui.vec2(a, b)
 end
 
 function ui.text_width(text)
+    local font = plain(text) and game_font();
+    if (font) then
+        return game_width(font, text);
+    end
     local width = imgui.CalcTextSize(text);
     if (type(width) == 'table') then
         return width.x or width[1] or 0;
@@ -378,12 +451,14 @@ local function outlined()
     return current.theme ~= nil and current.theme.outline == true;
 end
 
-local function plain(text)
-    return type(text) == 'string' and not text:find('[^\32-\126]');
-end
-
--- Draws text at a screen position, outlined when the theme asks for it. color is an RGBA table.
+-- Draws text at a screen position: in the game font when it applies, else outlined when the theme
+-- asks for it. color is an RGBA table.
 function ui.add_text(list, x, y, color, text)
+    local game = plain(text) and game_font();
+    if (game) then
+        draw_game_text(list, game, x, y, color, text);
+        return;
+    end
     local font  = imgui.GetFont();
     local size  = imgui.GetFontSize();
     local fill  = imgui.GetColorU32(color);
@@ -461,20 +536,34 @@ function ui.wrapped(color, text, wrap_x)
     imgui.Dummy({ widest, math.max(1, #lines) * height });
 end
 
--- Use in place of imgui.CollapsingHeader. Under an outlined theme the outlined label is drawn
--- exactly over ImGui's own, which covers it. The header keeps its ID (and open or closed state),
--- and its arrow, which ImGui draws in the text colour.
+-- Use in place of imgui.CollapsingHeader. Under an outlined theme ImGui draws the header with its
+-- text see-through, so it keeps the same ID (and open or closed state) but shows no label or arrow
+-- of its own; the arrow is drawn here the way ImGui draws it, and the label in the theme's text.
 function ui.header(label, flags)
     if (not outlined() or not plain(label)) then
         return imgui.CollapsingHeader(label, flags);
     end
 
-    -- Where ImGui puts a framed header's label: from the cursor (the frame itself reaches a little
-    -- further left), past the arrow, inside the frame padding.
+    -- Where ImGui puts a framed header's arrow and label: from the cursor (the frame itself reaches a
+    -- little further left), inside the frame padding, the label past the arrow.
     local x, y         = ui.vec2(imgui.GetCursorScreenPos());
     local pad_x, pad_y = ui.vec2(imgui.GetStyle().FramePadding);
+    local size         = imgui.GetFontSize();
+    imgui.PushStyleColor(ImGuiCol_Text, COLOR.clear);
     local open = imgui.CollapsingHeader(label, flags);
-    ui.add_text(imgui.GetWindowDrawList(), x + imgui.GetFontSize() + pad_x * 3, y + pad_y, COLOR.text, label);
+    imgui.PopStyleColor(1);
+
+    -- ImGui's arrow: a triangle 0.4 of the font size from the centre of a font-sized square.
+    local list   = imgui.GetWindowDrawList();
+    local cx, cy = x + pad_x + size * 0.5, y + pad_y + size * 0.5;
+    local r      = size * 0.40;
+    local fill   = imgui.GetColorU32(COLOR.text);
+    if (open) then
+        list:AddTriangleFilled({ cx, cy + 0.75 * r }, { cx + 0.866 * r, cy - 0.75 * r }, { cx - 0.866 * r, cy - 0.75 * r }, fill);
+    else
+        list:AddTriangleFilled({ cx + 0.75 * r, cy }, { cx - 0.75 * r, cy + 0.866 * r }, { cx - 0.75 * r, cy - 0.866 * r }, fill);
+    end
+    ui.add_text(list, x + size + pad_x * 3, y + pad_y, COLOR.text, label);
     return open;
 end
 

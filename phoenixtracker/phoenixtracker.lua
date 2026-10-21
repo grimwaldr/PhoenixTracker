@@ -47,6 +47,7 @@ local default_settings = T{
     auto_switch = true,
     theme       = ui.STARTING_THEME,
     window_type = -1,   -- Classic's Window Type (0-7), or -1 to follow the game's setting.
+    game_font   = true, -- Classic draws text in the game's own font at scale 1.
 };
 for _, tab in ipairs(TABS) do
     for key, value in pairs(tab.defaults) do
@@ -241,6 +242,10 @@ local function draw_theme_picker(width)
             set_theme('classic', value);
         end
     end
+    if (toggle_button('Game font (at scale 1)##pt_game_font', ctx.settings.game_font, width)) then
+        ctx.settings.game_font = not ctx.settings.game_font;
+        settings.save();
+    end
 end
 
 local function draw_settings(width, tab)
@@ -398,6 +403,7 @@ local function render()
     local width = window_width(scale);
 
     ui.apply_theme(ctx.settings.theme, ctx.settings.window_type);
+    ui.begin_frame(scale, ctx.settings.game_font);
     local color_count, var_count = ui.push_theme(ctx.settings.alpha);
     render_main(scale, width);
     -- A popup keeps the standard width. It doesn't need the room the main window makes for its rows
@@ -439,6 +445,7 @@ local function print_help(prefix, tab)
     ui.say(('%s auto - switch tabs automatically when you fish, dig or gather, on or off'):fmt(prefix));
     ui.say(('%s theme <phoenix | classic | neutral> - change the look'):fmt(prefix));
     ui.say(('%s theme classic <1-8 | game> - pin a Window Type, or follow the game\'s'):fmt(prefix));
+    ui.say(('%s font <game | outline> - Classic\'s text in the game\'s own font, or the normal font outlined'):fmt(prefix));
     tab.help(prefix);
 end
 
@@ -485,6 +492,18 @@ ashita.events.register('command', 'phoenixtracker_command', function (e)
         end
         ctx.settings.scale = math.min(3.0, math.max(0.5, scale));
         settings.save();
+    elseif (sub == 'font') then
+        local pick = (args[3] or ''):lower();
+        if (pick == 'game' or pick == 'outline') then
+            ctx.settings.game_font = pick == 'game';
+            settings.save();
+        elseif (pick ~= '') then
+            ui.say(('Usage: %s font <game | outline>'):fmt(prefix));
+            return;
+        end
+        ui.say(ctx.settings.game_font
+            and 'Classic draws text in the game\'s own font at scale 1, and the normal font outlined otherwise.'
+            or 'Classic draws text in the normal font with an outline.');
     elseif (sub == 'theme') then
         local key = ui.find_theme(args[3]);
         if (not key) then
