@@ -24,6 +24,23 @@ local function note(width, color, text)
     ui.wrapped(color, text, PADDING + width);
 end
 
+-- For a note whose message changes as you gather: it keeps the room of the longest of `alike`, so
+-- the window doesn't grow and shrink each time it changes.
+local function steady_note(width, color, text, alike)
+    ui.wrapped_steady(color, text, PADDING + width, alike);
+end
+
+local WEATHER_NONE    = 'No harvesting points in this weather. They need rain or squalls.';
+local WEATHER_UNKNOWN = 'Weather unknown. Harvesting points need rain or squalls.';
+local WEATHER_GOOD    = 'Rain or squalls: harvesting points can appear.';
+local WEATHER_NOTES   = { WEATHER_NONE, WEATHER_UNKNOWN, WEATHER_GOOD };
+
+local SESSION_WAITING     = 'Waiting for %d finds to reach your inventory.';
+local SESSION_UNCONFIRMED = '%d finds weren\'t seen in your inventory, so they aren\'t counted.';
+local SESSION_IDLE        = 'Finds count once they reach your inventory.';
+-- Measured with a wide count, so a bigger number never needs more room than was kept.
+local SESSION_NOTES       = { SESSION_WAITING:fmt(999), SESSION_UNCONFIRMED:fmt(999), SESSION_IDLE };
+
 function helm.new(type_id)
     local definition = assert(helmdata.types[type_id], 'Unknown HELM type');
     local model      = helm_model.new(type_id);
@@ -77,11 +94,11 @@ function helm.new(type_id)
         end
         if (zone.weathers) then
             if (pool.weather_available == false) then
-                note(width, COLOR.gold, 'No harvesting points in this weather. They need rain or squalls.');
+                steady_note(width, COLOR.gold, WEATHER_NONE, WEATHER_NOTES);
             elseif (pool.weather_available == nil) then
-                note(width, COLOR.muted, 'Weather unknown. Harvesting points need rain or squalls.');
+                steady_note(width, COLOR.muted, WEATHER_UNKNOWN, WEATHER_NOTES);
             else
-                note(width, COLOR.secondary, 'Rain or squalls: harvesting points can appear.');
+                steady_note(width, COLOR.secondary, WEATHER_GOOD, WEATHER_NOTES);
             end
         end
         if (pool.low_level) then
@@ -126,11 +143,14 @@ function helm.new(type_id)
             ui.stat_cell('Per hour', per_hour);
             imgui.EndTable();
         end
-        if (session.unconfirmed > 0) then
-            note(width, COLOR.gold, ('%d finds weren\'t seen in your inventory, so they aren\'t counted.'):fmt(session.unconfirmed));
-        end
+        -- A find waits a moment for its item after every gather, so this line is always here and only
+        -- its message changes. A line that came and went would resize the window each gather.
         if (snapshot.pending > 0) then
-            note(width, COLOR.muted, ('Waiting for %d finds to reach your inventory.'):fmt(snapshot.pending));
+            steady_note(width, COLOR.muted, SESSION_WAITING:fmt(snapshot.pending), SESSION_NOTES);
+        elseif (session.unconfirmed > 0) then
+            steady_note(width, COLOR.gold, SESSION_UNCONFIRMED:fmt(session.unconfirmed), SESSION_NOTES);
+        else
+            steady_note(width, COLOR.faint, SESSION_IDLE, SESSION_NOTES);
         end
     end
 

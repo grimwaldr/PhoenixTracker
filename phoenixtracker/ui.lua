@@ -501,15 +501,8 @@ function ui.text(color, text)
 end
 
 -- Text that wraps before wrap_x (in window coordinates, as imgui.PushTextWrapPos takes).
-function ui.wrapped(color, text, wrap_x)
-    if (not outlined() or not plain(text)) then
-        imgui.PushTextWrapPos(wrap_x);
-        imgui.TextColored(color, text);
-        imgui.PopTextWrapPos();
-        return;
-    end
-
-    local room  = wrap_x - imgui.GetCursorPosX();
+-- Splits text into the lines it takes up in `room` pixels, breaking between words as ImGui does.
+local function wrap_lines(text, room)
     local lines = {};
     local line  = '';
     for word in text:gmatch('%S+') do
@@ -524,7 +517,11 @@ function ui.wrapped(color, text, wrap_x)
     if (line ~= '') then
         lines[#lines + 1] = line;
     end
+    return lines;
+end
 
+-- Draws lines of text at the cursor and takes up `keep` lines of room (at least as many as drawn).
+local function draw_lines(color, lines, keep)
     local x, y   = ui.vec2(imgui.GetCursorScreenPos());
     local height = imgui.GetTextLineHeight();
     local list   = imgui.GetWindowDrawList();
@@ -533,7 +530,29 @@ function ui.wrapped(color, text, wrap_x)
         ui.add_text(list, x, y + (index - 1) * height, color, piece);
         widest = math.max(widest, ui.text_width(piece));
     end
-    imgui.Dummy({ widest, math.max(1, #lines) * height });
+    imgui.Dummy({ widest, math.max(1, #lines, keep or 0) * height });
+end
+
+function ui.wrapped(color, text, wrap_x)
+    if (not outlined() or not plain(text)) then
+        imgui.PushTextWrapPos(wrap_x);
+        imgui.TextColored(color, text);
+        imgui.PopTextWrapPos();
+        return;
+    end
+
+    draw_lines(color, wrap_lines(text, wrap_x - imgui.GetCursorPosX()));
+end
+
+-- Like ui.wrapped, for a spot whose message changes as you play: it always takes up the room of the
+-- tallest message in `alike`, so the auto-sized window keeps its height when the message changes.
+function ui.wrapped_steady(color, text, wrap_x, alike)
+    local room = wrap_x - imgui.GetCursorPosX();
+    local keep = 1;
+    for _, other in ipairs(alike) do
+        keep = math.max(keep, #wrap_lines(other, room));
+    end
+    draw_lines(color, wrap_lines(text, room), keep);
 end
 
 -- Use in place of imgui.CollapsingHeader. Under an outlined theme ImGui draws the header with its
