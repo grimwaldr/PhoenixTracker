@@ -201,6 +201,30 @@ class GameFontTests(unittest.TestCase):
         self.h.dispatch('command', command='/ptrack theme phoenix', blocked=False)
         self.assertIn('PhoenixTracker###phoenixtracker', self.begun())
 
+    def test_table_headers_menus_and_sliders_use_the_game_font_under_classic(self):
+        self.h.dispatch('command', command='/ptrack theme classic 2', blocked=False)
+        self.render()
+        self.h.lua.execute("""
+            local imgui = require('imgui')
+            local names = { [0] = 'Item', 'Qty' }
+            imgui.TableGetColumnCount = function() return 2 end
+            imgui.TableGetColumnName = function(i) return names[i] end
+            imgui.TableSetColumnIndex = function() return true end
+            imgui_calls = {}
+            imgui.TableHeadersRow = function() imgui_calls[#imgui_calls + 1] = 'TableHeadersRow' end
+            imgui.MenuItem = function() imgui_calls[#imgui_calls + 1] = 'MenuItem' end
+            imgui.SliderFloat = function(_, _, _, _, format) imgui_calls[#imgui_calls + 1] = 'Slider ' .. format end
+            drawn_images = {}
+        """)
+        self.ui.table_headers()
+        self.ui.menu_item('Hide', None, 120)
+        self.ui.slider('##s', self.h.lua.table(1.0), 0.5, 3.0, '%.2f', 0)
+        calls = list(self.h.lua.globals().imgui_calls.values())
+        self.assertNotIn('TableHeadersRow', calls)
+        self.assertNotIn('MenuItem', calls)
+        self.assertIn('Slider ', calls)                 # ImGui draws no value of its own
+        self.assertGreater(self.images(), 0)
+
     def test_a_bad_font_choice_is_refused(self):
         self.h.dispatch('command', command='/ptrack font comic', blocked=False)
         self.assertTrue(self.h.settings.game_font)

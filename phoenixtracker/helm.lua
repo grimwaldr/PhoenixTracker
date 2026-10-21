@@ -201,7 +201,7 @@ function helm.new(type_id)
             if (imgui.BeginTable('##helm_' .. M.key .. '_caps', 2, flags, { width, 0 })) then
                 imgui.TableSetupColumn('Capped item', ImGuiTableColumnFlags_WidthStretch, 0, 0);
                 imgui.TableSetupColumn('Found', ImGuiTableColumnFlags_WidthFixed, ui.text_width('Unknown') + 8 * scale, 0);
-                imgui.TableHeadersRow();
+                ui.table_headers();
                 for _, id in ipairs(cap_ids) do
                     local cap = caps[id];
                     unknown = unknown or not cap.known;
@@ -253,7 +253,7 @@ function helm.new(type_id)
                 imgui.TableSetupColumn('Fresh', ImGuiTableColumnFlags_WidthFixed, odds_width, 0);
             end
             imgui.TableSetupColumn(tracks_fatigue and 'Now' or 'Odds', ImGuiTableColumnFlags_WidthFixed, odds_width, 0);
-            imgui.TableHeadersRow();
+            ui.table_headers();
             for _, row in ipairs(pool.rows) do
                 imgui.TableNextRow();
                 imgui.TableNextColumn();
@@ -307,7 +307,7 @@ function helm.new(type_id)
             if (imgui.BeginTable('##helm_' .. M.key .. '_items', 2, flags, size)) then
                 imgui.TableSetupColumn('Item', ImGuiTableColumnFlags_WidthStretch, 0, 0);
                 imgui.TableSetupColumn('Qty', ImGuiTableColumnFlags_WidthFixed, 44 * scale, 0);
-                imgui.TableHeadersRow();
+                ui.table_headers();
                 for _, row in ipairs(rows) do
                     imgui.TableNextRow();
                     imgui.TableNextColumn();

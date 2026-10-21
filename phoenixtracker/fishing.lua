@@ -590,9 +590,8 @@ local function draw_hook(width, scale)
         imgui.PushStyleColor(ImGuiCol_Button, color);
         imgui.PushStyleColor(ImGuiCol_ButtonHovered, color);
         imgui.PushStyleColor(ImGuiCol_ButtonActive, color);
-        imgui.PushStyleColor(ImGuiCol_Text, COLOR.abyss);
-        imgui.Button(label .. '##pf_verdict', { width, imgui.GetTextLineHeight() + 6 * scale });
-        imgui.PopStyleColor(4);
+        ui.button(label, 'pf_verdict', { width, imgui.GetTextLineHeight() + 6 * scale }, COLOR.abyss);
+        imgui.PopStyleColor(3);
     end
     imgui.Spacing();
 
@@ -613,7 +612,7 @@ local function draw_hook(width, scale)
         imgui.TableSetupColumn('Could be', ImGuiTableColumnFlags_WidthStretch, 0, 0);
         imgui.TableSetupColumn('Skill', ImGuiTableColumnFlags_WidthFixed, text_width('Skill') + 4 * scale, 0);
         imgui.TableSetupColumn('Odds', ImGuiTableColumnFlags_WidthFixed, math.max(text_width('Odds'), text_width('100%'), text_width('quest')) + 4 * scale, 0);
-        imgui.TableHeadersRow();
+        ui.table_headers();
         for _, row in ipairs(rows) do
             imgui.TableNextRow();
             imgui.TableNextColumn();
@@ -782,7 +781,7 @@ local function draw_catches(width, scale)
     if (imgui.BeginTable('##pf_catches', 2, flags, size)) then
         imgui.TableSetupColumn('Item', ImGuiTableColumnFlags_WidthStretch, 0, 0);
         imgui.TableSetupColumn('Qty', ImGuiTableColumnFlags_WidthFixed, 44 * scale, 0);
-        imgui.TableHeadersRow();
+        ui.table_headers();
         for _, row in ipairs(rows) do
             imgui.TableNextRow();
             imgui.TableNextColumn();

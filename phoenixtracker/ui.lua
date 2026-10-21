@@ -753,6 +753,109 @@ function ui.draw_title(title)
     list:PopClipRect();
 end
 
+-- Use in place of imgui.TableHeadersRow. Under an outlined theme each header keeps ImGui's look and
+-- behaviour but its name is drawn in the theme's text. Reads the names given to TableSetupColumn.
+function ui.table_headers()
+    local count = outlined() and imgui.TableGetColumnCount and imgui.TableGetColumnCount();
+    local names = {};
+    if (type(count) == 'number') then
+        for column = 0, count - 1 do
+            local name = imgui.TableGetColumnName(column);
+            if (type(name) ~= 'string') then
+                count = nil;
+                break;
+            end
+            names[column] = name;
+        end
+    end
+    if (type(count) ~= 'number') then
+        imgui.TableHeadersRow();
+        return;
+    end
+
+    imgui.TableNextRow(ImGuiTableRowFlags_Headers);
+    local list = imgui.GetWindowDrawList();
+    for column = 0, count - 1 do
+        if (imgui.TableSetColumnIndex(column) ~= false) then
+            local shown = names[column]:match('^(.-)##') or names[column];
+            local x, y  = ui.vec2(imgui.GetCursorScreenPos());
+            imgui.PushID(column);
+            imgui.TableHeader('##' .. names[column]);
+            imgui.PopID();
+            if (shown ~= '') then
+                ui.add_text(list, x, y, COLOR.text, shown);
+            end
+        end
+    end
+end
+
+-- Use in place of imgui.Button for a button whose label is only shown: under an outlined theme the
+-- label is drawn in the theme's text, centred as ImGui centres it. color is the label's colour.
+function ui.button(label, id, size, color)
+    if (not outlined() or not plain(label)) then
+        imgui.PushStyleColor(ImGuiCol_Text, color or COLOR.text);
+        local clicked = imgui.Button(label .. '##' .. id, size);
+        imgui.PopStyleColor(1);
+        return clicked;
+    end
+    local clicked = imgui.Button('##' .. id, size);
+    local x0, y0 = ui.vec2(imgui.GetItemRectMin());
+    local x1, y1 = ui.vec2(imgui.GetItemRectMax());
+    ui.add_text(imgui.GetWindowDrawList(), (x0 + x1 - ui.text_width(label)) / 2,
+        (y0 + y1 - imgui.GetTextLineHeight()) / 2, color or COLOR.text, label);
+    return clicked;
+end
+
+-- How wide a menu needs to be for these labels, with room for the tick a checked item shows.
+function ui.menu_width(labels)
+    local widest = 0;
+    for _, label in ipairs(labels) do
+        widest = math.max(widest, ui.text_width(label));
+    end
+    return widest + imgui.GetFontSize() + 12;
+end
+
+-- Use in place of imgui.MenuItem(label, nil, selected). width is ui.menu_width of the menu's labels,
+-- so every item's highlight spans the menu. Under an outlined theme the label and the tick are drawn
+-- in the theme's style.
+function ui.menu_item(label, selected, width)
+    if (not outlined() or not plain(label)) then
+        return imgui.MenuItem(label, nil, selected);
+    end
+    local x, y    = ui.vec2(imgui.GetCursorScreenPos());
+    local clicked = imgui.Selectable('##menu_' .. label, false, 0, { width, 0 });
+    local list    = imgui.GetWindowDrawList();
+    ui.add_text(list, x, y, COLOR.text, label);
+    if (selected) then
+        -- A tick at the right of the item, as ImGui puts it, with a dark copy underneath like the text.
+        local size   = imgui.GetFontSize() * 0.75;
+        local left   = x + width - size - 2;
+        local top    = y + (imgui.GetTextLineHeight() - size) / 2;
+        local points = { { left + size * 0.15, top + size * 0.5 }, { left + size * 0.4, top + size * 0.78 }, { left + size * 0.88, top + size * 0.2 } };
+        for pass, colour in ipairs({ { 0, 0, 0, 0.9 }, COLOR.text }) do
+            local thickness = (pass == 1) and 4 or 2;
+            local packed    = imgui.GetColorU32(colour);
+            list:AddLine(points[1], points[2], packed, thickness);
+            list:AddLine(points[2], points[3], packed, thickness);
+        end
+    end
+    return clicked;
+end
+
+-- Use in place of imgui.SliderFloat: under an outlined theme the value is drawn in the theme's text.
+function ui.slider(id, buffer, low, high, format, flags)
+    if (not outlined()) then
+        return imgui.SliderFloat(id, buffer, low, high, format, flags);
+    end
+    local changed = imgui.SliderFloat(id, buffer, low, high, '', flags);
+    local value   = format:format(buffer[1]);
+    local x0, y0  = ui.vec2(imgui.GetItemRectMin());
+    local x1, y1  = ui.vec2(imgui.GetItemRectMax());
+    ui.add_text(imgui.GetWindowDrawList(), (x0 + x1 - ui.text_width(value)) / 2,
+        (y0 + y1 - imgui.GetTextLineHeight()) / 2, COLOR.text, value);
+    return changed;
+end
+
 -- Use in place of imgui.CollapsingHeader. Under an outlined theme ImGui draws the header with its
 -- text see-through, so it keeps the same ID (and open or closed state) but shows no label or arrow
 -- of its own; the arrow is drawn here the way ImGui draws it, and the label in the theme's text.

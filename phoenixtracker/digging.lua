@@ -736,7 +736,7 @@ local function draw_pool(width, scale, pool)
         imgui.TableSetupColumn('Item', ImGuiTableColumnFlags_WidthStretch, 0, 0);
         imgui.TableSetupColumn('XP', ImGuiTableColumnFlags_WidthFixed, text_width('100') + 4 * scale, 0);
         imgui.TableSetupColumn('Odds', ImGuiTableColumnFlags_WidthFixed, math.max(text_width('Odds'), text_width('0.5%')) + 4 * scale, 0);
-        imgui.TableHeadersRow();
+        ui.table_headers();
         for _, row in ipairs(pool.rows) do
             imgui.TableNextRow();
             imgui.TableNextColumn();
@@ -796,7 +796,7 @@ local function draw_finds(width, scale)
     if (imgui.BeginTable('##pd_finds', 2, flags, size)) then
         imgui.TableSetupColumn('Item', ImGuiTableColumnFlags_WidthStretch, 0, 0);
         imgui.TableSetupColumn('Qty', ImGuiTableColumnFlags_WidthFixed, 44 * scale, 0);
-        imgui.TableHeadersRow();
+        ui.table_headers();
         for _, row in ipairs(rows) do
             imgui.TableNextRow();
             imgui.TableNextColumn();

@@ -182,7 +182,7 @@ end
 local function setting_slider(id, key, low, high, format, step, width, live)
     imgui.SetNextItemWidth(width);
     local buffer = { pt.pending[key] or ctx.settings[key] };
-    if (imgui.SliderFloat(('##pt_%s_%s'):fmt(id, key), buffer, low, high, format, ImGuiSliderFlags_AlwaysClamp)) then
+    if (ui.slider(('##pt_%s_%s'):fmt(id, key), buffer, low, high, format, ImGuiSliderFlags_AlwaysClamp)) then
         local value = math.floor(buffer[1] / step + 0.5) * step;
         if (live) then
             ctx.settings[key] = value;
@@ -283,27 +283,34 @@ local function draw_context_menu(tab)
     if (not imgui.BeginPopupContextWindow()) then
         return;
     end
-    if (imgui.MenuItem('Lock Window', nil, ctx.settings.locked)) then
+    local reset_label = ('Reset %s Session'):fmt(tab.label);
+    local labels = { 'Lock Window', 'Switch Tab Automatically', reset_label, 'Reset Position', 'Hide' };
+    for _, theme in ipairs(ui.THEMES) do
+        labels[#labels + 1] = ('%s Theme'):fmt(theme.label);
+    end
+    local width = ui.menu_width(labels);
+
+    if (ui.menu_item('Lock Window', ctx.settings.locked, width)) then
         ctx.settings.locked = not ctx.settings.locked;
         settings.save();
     end
-    if (imgui.MenuItem('Switch Tab Automatically', nil, ctx.settings.auto_switch)) then
+    if (ui.menu_item('Switch Tab Automatically', ctx.settings.auto_switch, width)) then
         ctx.settings.auto_switch = not ctx.settings.auto_switch;
         settings.save();
     end
-    if (imgui.MenuItem(('Reset %s Session'):fmt(tab.label))) then
+    if (ui.menu_item(reset_label, nil, width)) then
         tab.reset_session();
     end
-    if (imgui.MenuItem('Reset Position')) then
+    if (ui.menu_item('Reset Position', nil, width)) then
         pt.reset_position = true;
     end
-    if (imgui.MenuItem('Hide')) then
+    if (ui.menu_item('Hide', nil, width)) then
         ctx.settings.visible = false;
         settings.save();
     end
     imgui.Separator();
     for _, theme in ipairs(ui.THEMES) do
-        if (imgui.MenuItem(('%s Theme'):fmt(theme.label), nil, ctx.settings.theme == theme.key)) then
+        if (ui.menu_item(('%s Theme'):fmt(theme.label), ctx.settings.theme == theme.key, width)) then
             set_theme(theme.key);
         end
     end
