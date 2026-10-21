@@ -549,20 +549,6 @@ function ui.session_hold(session, held, now)
     end
 end
 
--- At the JST reset the session's clocks start over with the new day, and its rates count only what
--- comes after: count is the session's running total (catches, finds) at the reset.
-function ui.session_new_day(session, count)
-    session.clock    = ui.new_clock();
-    session.total    = 0;
-    session.started  = nil;
-    session.day_base = count;
-end
-
--- How much of a session count came since its clocks started (the session, or the last JST reset).
-function ui.session_count(session, count)
-    return count - (session.day_base or 0);
-end
-
 -- Seconds from the session's first action, stopping at the daily limit.
 function ui.session_total(session, now)
     now = now or os.time();

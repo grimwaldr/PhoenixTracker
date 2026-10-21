@@ -171,7 +171,7 @@ class HelmModelTests(unittest.TestCase):
         self.model.present()
         snap = self.snap()
         self.assertEqual(snap.daily.attempts, 0)
-        self.assertEqual(snap.session.attempts, 1)
+        self.assertEqual(snap.session.attempts, 0)        # a new day starts a new session
         self.assertEqual(snap.fatigue.depletion.count, 3)
 
     def test_confirming_yesterdays_find_does_not_count_it_today(self):

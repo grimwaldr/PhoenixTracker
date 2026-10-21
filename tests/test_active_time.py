@@ -102,6 +102,8 @@ class FishingActiveTimeTests(unittest.TestCase):
         self.cast(20)
         self.assertEqual(held, ('0m 41s', '0m 41s'))          # the cast and a second after it
         self.assertEqual(self.times(), ('0m 20s', '0m 20s'))  # a new day starts both over
+        self.assertEqual(self.pf.session.casts, 0)            # with the rest of the session
+        self.assertEqual(self.pf.session.skill, 0)
 
 
 if __name__ == '__main__':
