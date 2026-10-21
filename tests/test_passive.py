@@ -52,11 +52,17 @@ class PassiveAddonTests(unittest.TestCase):
             with self.subTest(file=name):
                 self.assertEqual(read, ALLOWED_PACKETS.get(name, set()))
 
-    def test_game_memory_is_only_read_for_the_weather(self):
+    def test_game_memory_is_only_read_for_the_weather_and_window_type(self):
         users = {name for name, text in self.sources().items() if 'ashita.memory.' in text}
-        self.assertEqual(users, {'ui.lua'})
+        self.assertEqual(users, {'ui.lua', 'skin.lua'})
         self.assertEqual(set(re.findall(r'ashita\.memory\.(\w+)', self.sources()['ui.lua'])),
                          {'find', 'read_uint32', 'read_uint8'})
+        # The Classic theme finds the game's own config getter (the lookup Ashita's config addon
+        # uses) and asks it for one setting, Window Type. Nothing else in the game is called.
+        skin = self.sources()['skin.lua']
+        self.assertEqual(set(re.findall(r'ashita\.memory\.(\w+)', skin)), {'find'})
+        self.assertEqual(re.findall(r'config_get\((\w+)\)', skin), ['WINDOW_TYPE_KEY'])
+        self.assertIn('local WINDOW_TYPE_KEY      = 18;', skin)
 
     def test_only_the_addons_own_typed_commands_are_blocked(self):
         h = Harness()

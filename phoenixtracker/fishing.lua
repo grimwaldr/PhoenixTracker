@@ -837,6 +837,7 @@ local function render_hook(scale, width)
 
     local flags = bit.bor(ui.window_flags(ctx.settings.locked), ImGuiWindowFlags_NoTitleBar, ImGuiWindowFlags_NoFocusOnAppearing);
     if (imgui.Begin('On the Line##phoenixfishtrack_hook', true, flags)) then
+        ui.draw_skin(false, ctx.settings.alpha);
         imgui.PushFont(imgui.GetFont(), imgui.GetFontSize() * scale);
         draw_hook(width, scale);
         remember_position('hook_x', 'hook_y');

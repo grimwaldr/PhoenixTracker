@@ -45,6 +45,8 @@ local default_settings = T{
     y           = 300,
     tab         = 'fish',
     auto_switch = true,
+    theme       = ui.STARTING_THEME,
+    window_type = -1,   -- Classic's Window Type (0-7), or -1 to follow the game's setting.
 };
 for _, tab in ipairs(TABS) do
     for key, value in pairs(tab.defaults) do
@@ -107,6 +109,14 @@ local function player_name()
         return nil;
     end
     return name;
+end
+
+local function set_theme(key, window_type)
+    ctx.settings.theme = key;
+    if (window_type ~= nil) then
+        ctx.settings.window_type = window_type;
+    end
+    settings.save();
 end
 
 -----------------------------------
@@ -202,6 +212,37 @@ local function settings_row(label, key, low, high, format, step, width, live)
     setting_slider('panel', key, low, high, format, step, width - indent, live);
 end
 
+-- Theme buttons, and for Classic which Window Type to wear: Game follows the in-game setting.
+local function draw_theme_picker(width)
+    imgui.Spacing();
+    imgui.TextColored(COLOR.muted, 'Theme');
+    local button_width = (width - (#ui.THEMES - 1) * 8) / #ui.THEMES;
+    for index, theme in ipairs(ui.THEMES) do
+        if (index > 1) then
+            imgui.SameLine();
+        end
+        if (toggle_button(('%s##pt_theme_%s'):fmt(theme.label, theme.key), ctx.settings.theme == theme.key, button_width)) then
+            set_theme(theme.key);
+        end
+    end
+
+    if (ctx.settings.theme ~= 'classic') then
+        return;
+    end
+    imgui.TextColored(COLOR.muted, 'Window type');
+    local labels = { 'Game', '1', '2', '3', '4', '5', '6', '7', '8' };
+    local small  = (width - (#labels - 1) * 8) / #labels;
+    for index, label in ipairs(labels) do
+        local value = index - 2;
+        if (index > 1) then
+            imgui.SameLine();
+        end
+        if (toggle_button(('%s##pt_wtype_%d'):fmt(label, index), ctx.settings.window_type == value, small)) then
+            set_theme('classic', value);
+        end
+    end
+end
+
 local function draw_settings(width, tab)
     if (not pt.show_settings) then
         return;
@@ -229,6 +270,7 @@ local function draw_settings(width, tab)
         ctx.settings.auto_switch = not ctx.settings.auto_switch;
         settings.save();
     end
+    draw_theme_picker(width);
     imgui.Separator();
 end
 
@@ -253,6 +295,12 @@ local function draw_context_menu(tab)
     if (imgui.MenuItem('Hide')) then
         ctx.settings.visible = false;
         settings.save();
+    end
+    imgui.Separator();
+    for _, theme in ipairs(ui.THEMES) do
+        if (imgui.MenuItem(('%s Theme'):fmt(theme.label), nil, ctx.settings.theme == theme.key)) then
+            set_theme(theme.key);
+        end
     end
     imgui.Separator();
     menu_slider('Scale', 'scale', 0.5, 3.0, '%.2f', 0.05, false);
@@ -309,6 +357,7 @@ local function render_main(scale, width)
 
     local is_open = T{ true };
     if (imgui.Begin('PhoenixTracker##phoenixtracker', is_open, ui.window_flags(ctx.settings.locked))) then
+        ui.draw_skin(true, ctx.settings.alpha);
         local font      = imgui.GetFont();
         local font_size = imgui.GetFontSize() * scale;
         imgui.PushFont(font, font_size);
@@ -348,6 +397,7 @@ local function render()
     local scale = ctx.settings.scale;
     local width = window_width(scale);
 
+    ui.apply_theme(ctx.settings.theme, ctx.settings.window_type);
     local color_count, var_count = ui.push_theme(ctx.settings.alpha);
     render_main(scale, width);
     -- A popup keeps the standard width. It doesn't need the room the main window makes for its rows
@@ -387,6 +437,8 @@ local function print_help(prefix, tab)
     end
     ui.say(('%s scale <0.5-3> - window size'):fmt(prefix));
     ui.say(('%s auto - switch tabs automatically when you fish, dig or gather, on or off'):fmt(prefix));
+    ui.say(('%s theme <phoenix | classic | neutral> - change the look'):fmt(prefix));
+    ui.say(('%s theme classic <1-8 | game> - pin a Window Type, or follow the game\'s'):fmt(prefix));
     tab.help(prefix);
 end
 
@@ -433,6 +485,37 @@ ashita.events.register('command', 'phoenixtracker_command', function (e)
         end
         ctx.settings.scale = math.min(3.0, math.max(0.5, scale));
         settings.save();
+    elseif (sub == 'theme') then
+        local key = ui.find_theme(args[3]);
+        if (not key) then
+            local names = T{};
+            for _, theme in ipairs(ui.THEMES) do
+                names:append(theme.label);
+            end
+            ui.say(('Themes: %s. Current: %s.'):fmt(names:concat(', '), ui.theme_label(ctx.settings.theme)));
+            return;
+        end
+        local window_type = nil;
+        local pick = (args[4] or ''):lower();
+        if (key == 'classic' and pick ~= '') then
+            local number = tonumber(pick);
+            if (pick == 'game') then
+                window_type = -1;
+            elseif (number and number >= 1 and number <= 8 and number % 1 == 0) then
+                window_type = number - 1;
+            else
+                ui.say(('Usage: %s theme classic <1-8 | game>'):fmt(prefix));
+                return;
+            end
+        end
+        set_theme(key, window_type);
+        if (key == 'classic' and ctx.settings.window_type >= 0) then
+            ui.say(('Theme set to Classic, Window Type %d.'):fmt(ctx.settings.window_type + 1));
+        elseif (key == 'classic') then
+            ui.say('Theme set to Classic, following your in-game Window Type.');
+        else
+            ui.say(('Theme set to %s.'):fmt(ui.theme_label(key)));
+        end
     elseif (sub == 'auto') then
         ctx.settings.auto_switch = not ctx.settings.auto_switch;
         settings.save();
@@ -462,6 +545,7 @@ ashita.events.register('unload', 'phoenixtracker_unload', function ()
     for _, tab in ipairs(TABS) do
         tab.unload();
     end
+    ui.release_skin();
 end);
 
 settings.register('settings', 'phoenixtracker_settings_update', function (s)

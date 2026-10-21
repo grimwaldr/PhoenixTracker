@@ -38,7 +38,8 @@ Phoenix Tracker only watches. It reads what the server already sends to your gam
 ### Window
 
 - **Tabs:** Fishing and Digging are on the first row, with Harvesting, Logging, Mining and Excavation on the second. Click one to switch. By default the window switches for you to whatever you're doing.
-- **Settings:** the cog at the top right opens scale and opacity sliders, Lock, Reset Position, Reset Session and the automatic tab switch. All six tabs share the same window, colours and settings.
+- **Settings:** the cog at the top right opens scale and opacity sliders, Lock, Reset Position, Reset Session, the automatic tab switch and the theme. All six tabs share the same window, colours and settings.
+- **Themes:** Phoenix (dark red), Classic (the game's own window art, following your in-game Window Type) and Neutral (dark grey and blue). See [Themes](#themes).
 
 ## Installing
 
@@ -64,6 +65,8 @@ If you used Phoenix Fish Track before, unload it with `/addon unload phoenixfish
 | `/ptrack show` / `/ptrack hide` | Show or hide the window |
 | `/ptrack scale <0.5-3>` | Change the window size |
 | `/ptrack auto` | Turn automatic tab switching on or off |
+| `/ptrack theme <phoenix \| classic \| neutral>` | Change the look. No name lists the themes |
+| `/ptrack theme classic <1-8 \| game>` | Pin Classic to one Window Type, or follow your in-game setting again |
 | `/pfish set <count>` / `/pdig set <count>` | Correct today's count |
 | `/pfish account <name>` / `/pdig account <name>` | Share one count between characters on the same account |
 | `/pfish account` / `/pdig account` | Count this character on its own again |
@@ -77,7 +80,7 @@ If you used Phoenix Fish Track before, unload it with `/addon unload phoenixfish
 | `/plog fatigue <count>` / `/pmine fatigue <count>` | Set how many rare items you've found in this zone since you zoned in |
 | `/pmine cap <item-id> <count>` | Set how many of a capped ore you've found in Mount Zhayolm since its last reset. The item ID is `646` for Adaman and `685` for Khroma |
 
-`/phoenixtracker` works in place of `/ptrack`. Click the cog at the top right of the window to open its settings: scale and opacity sliders, Lock, Reset Position (moves both windows back to their starting spots), Reset Session (for the open tab) and the automatic tab switch. It works with a left click, so it's usable on a controller or Steam Deck. The same options, plus Hide, are also in the right-click menu.
+`/phoenixtracker` works in place of `/ptrack`. Click the cog at the top right of the window to open its settings: scale and opacity sliders, Lock, Reset Position (moves both windows back to their starting spots), Reset Session (for the open tab), the automatic tab switch and the theme. It works with a left click, so it's usable on a controller or Steam Deck. The same options, plus Hide, are also in the right-click menu.
 
 ## How catches are counted
 
@@ -246,12 +249,29 @@ The item odds are the odds of each item once an attempt finds something, not per
 
 The gathering data comes from the [Phoenix server code](https://github.com/phoenixffxi/Phoenix). It uses the server's gathering tables (which it calls HELM), its era changes, and the scripts and IDs of the gathering points. The `source` table at the top of `helmdata.lua` records which server commit it was taken from. When Phoenix changes its gathering, the data is updated in a new release.
 
+## Themes
+
+Pick a theme under the cog, from the right-click menu, or with `/ptrack theme`. It's saved for each character.
+
+| Theme | Look |
+|---|---|
+| Phoenix | Dark red and ember, after phoenix-xi.com. The starting theme. |
+| Classic | The game's own window art, the same frame and background as your in-game menus. |
+| Neutral | Dark grey with blue buttons. |
+
+Classic follows Config > Windows > Shared > Window Type in the game's menu, and changes within a second when you change it. To keep one look whatever the game is set to, pick a type under Window type in the settings, or use `/ptrack theme classic <1-8>`. Game goes back to following the game.
+
+The art is read from your own game install (`ROM/0/14.DAT` to `21.DAT`, one file for each Window Type). Nothing from the game ships with the addon. If those files can't be found, Classic says so once in chat and uses plain colours that match the Window Type instead.
+
+To read the Window Type, Classic asks the game's own config for that one setting, the same way Ashita's config addon does. It doesn't read or change anything else.
+
 ## Files
 
 | File | What it holds |
 |---|---|
 | `phoenixtracker.lua` | The window, header, tabs, settings panel and commands |
-| `ui.lua` | The colours and drawing helpers every tab shares |
+| `ui.lua` | The themes, colours and drawing helpers every tab shares |
+| `skin.lua` | Reads and draws the game's window art for the Classic theme |
 | `fishing.lua` | The Fishing tab |
 | `fishdata.lua`, `catchpool.lua`, `offsets.lua`, `rumble.lua` | Fishing data and helpers |
 | `digging.lua` | The Digging tab |
@@ -264,10 +284,11 @@ Today's counts are saved in Ashita's `config/addons/phoenixtracker` folder, in `
 
 ### Adding a tab
 
-Each tab is a module that returns a table with `key`, `label`, `defaults` and the functions `init`, `ready`, `day`, `account`, `fit_width`, `draw`, `render_popups`, `reset_session`, `reset_positions`, `reload`, `help`, `command`, `packet_in`, `present` and `unload`. Add it to `TAB_ROWS`, `COMMANDS` and `TAB_WORDS` in `phoenixtracker.lua`. Use `COLOR` and the helpers in `ui.lua` so it matches the rest of the window.
+Each tab is a module that returns a table with `key`, `label`, `defaults` and the functions `init`, `ready`, `day`, `account`, `fit_width`, `draw`, `render_popups`, `reset_session`, `reset_positions`, `reload`, `help`, `command`, `packet_in`, `present` and `unload`. Add it to `TAB_ROWS`, `COMMANDS` and `TAB_WORDS` in `phoenixtracker.lua`. Use `COLOR` and the helpers in `ui.lua` so it matches the rest of the window and follows the theme. Read colours from `COLOR` when you draw rather than copying them, since a theme change refills it.
 
 ## Credits
 
 - **Skold** made Phoenix Fish Track, which became the Fishing tab, and the Harvesting, Logging, Mining and Excavation tabs.
 - **Grimwald** made the Digging tab and turned the addon into Phoenix Tracker, with a tab for each activity.
+- **Frankie** worked out how to read and draw the game's window art in [craftbook](https://github.com/Frankie-hz/craftbook), which the Classic theme's `skin.lua` is adapted from, along with its colours for each Window Type.
 - **Slowed** made the On the Line panel that lists what could be on your line, and the On Hook Display choices that show whether to reel in.

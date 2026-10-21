@@ -1,5 +1,6 @@
--- Shared look for every PhoenixTracker tab. The palette and style values are Skold's, from
--- PhoenixFishTrack, so every tab draws with exactly the same colours.
+-- Shared look for every PhoenixTracker tab: the themes, and the helpers every tab draws with.
+-- Tabs read colours from ui.COLOR by name. A theme refills that table in place, so a tab never
+-- needs to know which theme is showing.
 require('common');
 
 local chat  = require('chat');
@@ -22,28 +23,241 @@ end
 
 local rgb = ui.rgb;
 
-ui.COLOR = T{
-    abyss     = rgb('180e0e'),
-    surface1  = rgb('291c1c'),
-    surface2  = rgb('321f1f'),
-    border    = rgb('d2abab', 0.20),
-    subtle    = rgb('d2abab', 0.12),
-    text      = rgb('fff8f8'),
-    secondary = rgb('eae1e1'),
-    peach     = rgb('d2abab'),
-    muted     = rgb('8a6b6b'),
-    faint     = rgb('5a4545'),
-    royal     = rgb('c55151'),
-    tint      = rgb('c55151', 0.30),
-    hover     = rgb('d45e5e'),
-    ember     = rgb('ff8d79'),
-    danger    = rgb('e04040'),
-    gold      = rgb('c5a131'),
-    success   = rgb('63ba8a'),
-    clear     = { 0, 0, 0, 0 },
+local function fade(color, alpha)
+    return { color[1], color[2], color[3], alpha };
+end
+
+local function shade(color, factor, alpha)
+    return { color[1] * factor, color[2] * factor, color[3] * factor, alpha or 1 };
+end
+
+local function lighten(color, amount)
+    return {
+        color[1] + (1 - color[1]) * amount,
+        color[2] + (1 - color[2]) * amount,
+        color[3] + (1 - color[3]) * amount,
+        1,
+    };
+end
+
+-----------------------------------
+-- Themes
+-----------------------------------
+-- Every theme fills the same names:
+--   abyss      window background, and dark text on a filled banner
+--   surface1   title bar, popups and alternate table rows
+--   surface2   an off toggle button, input boxes and the empty part of a bar
+--   border, subtle   window and table lines
+--   text, secondary, muted, faint   text from brightest to dimmest
+--   peach      the character name and other headline text
+--   royal, hover, tint   an on toggle button, filled bars, and their hover states
+--   ember      a highlighted number or countdown
+--   danger, gold, success   bad, notable and good
+-- style holds the corner rounding, which Classic squares off to match the game's windows.
+
+-- Skold's original palette, after phoenix-xi.com.
+local function phoenix_theme()
+    return {
+        palette = {
+            abyss     = rgb('180e0e'),
+            surface1  = rgb('291c1c'),
+            surface2  = rgb('321f1f'),
+            border    = rgb('d2abab', 0.20),
+            subtle    = rgb('d2abab', 0.12),
+            text      = rgb('fff8f8'),
+            secondary = rgb('eae1e1'),
+            peach     = rgb('d2abab'),
+            muted     = rgb('8a6b6b'),
+            faint     = rgb('5a4545'),
+            royal     = rgb('c55151'),
+            tint      = rgb('c55151', 0.30),
+            hover     = rgb('d45e5e'),
+            ember     = rgb('ff8d79'),
+            danger    = rgb('e04040'),
+            gold      = rgb('c5a131'),
+            success   = rgb('63ba8a'),
+        },
+        style = { window = 8.0, frame = 4.0 },
+    };
+end
+
+-- Dark grey with a blue accent, for anyone who'd rather not have red on red.
+local function neutral_theme()
+    return {
+        palette = {
+            abyss     = rgb('16171b'),
+            surface1  = rgb('222329'),
+            surface2  = rgb('2c2e35'),
+            border    = rgb('c8ccd6', 0.18),
+            subtle    = rgb('c8ccd6', 0.10),
+            text      = rgb('f2f3f5'),
+            secondary = rgb('d9dbe0'),
+            peach     = rgb('a9c4f5'),
+            muted     = rgb('8b8f99'),
+            faint     = rgb('5b5e66'),
+            royal     = rgb('3f6fb8'),
+            tint      = rgb('3f6fb8', 0.30),
+            hover     = rgb('4c7ec9'),
+            ember     = rgb('f2b366'),
+            danger    = rgb('e05a5a'),
+            gold      = rgb('d4b44a'),
+            success   = rgb('63ba8a'),
+        },
+        style = { window = 8.0, frame = 4.0 },
+    };
+end
+
+-- The background and frame colour of each in-game Window Type (0 is Type 1), sampled from the
+-- game's art by Frankie-hz for craftbook. The flat parts of the window are built from these so
+-- they sit on the art, and they stand in for the art if it can't be read.
+local WINDOW_ART = {
+    [0] = { background = rgb('282452'), frame = rgb('888988') },
+    [1] = { background = rgb('5d5c6f'), frame = rgb('9698a6') },
+    [2] = { background = rgb('23204d'), frame = rgb('888988') },
+    [3] = { background = rgb('2b2b2b'), frame = rgb('9698a6') },
+    [4] = { background = rgb('626262'), frame = rgb('888988') },
+    [5] = { background = rgb('001948'), frame = rgb('5a4418') },
+    [6] = { background = rgb('9e8f64'), frame = rgb('867953') },
+    [7] = { background = rgb('1c353f'), frame = rgb('314e57') },
 };
 
-local COLOR = ui.COLOR;
+-- The middle of the top-down shading the art is drawn with.
+local ART_SHADE = 0.62;
+
+-- The game's own window look, following Config > Windows > Shared > Window Type.
+local function classic_theme(window_type)
+    local art    = WINDOW_ART[window_type] or WINDOW_ART[0];
+    local panel  = shade(art.background, ART_SHADE);
+    local accent = lighten(art.frame, 0.25);
+    local light  = lighten(art.frame, 0.60);
+    return {
+        palette = {
+            abyss     = panel,
+            surface1  = shade(panel, 0.80),
+            surface2  = { 0, 0, 0, 0.34 },
+            border    = fade(accent, 0.55),
+            subtle    = fade(accent, 0.25),
+            text      = { 0.96, 0.96, 0.93, 1 },
+            secondary = { 0.88, 0.88, 0.85, 1 },
+            peach     = { 1.00, 0.87, 0.48, 1 },
+            muted     = { 0.72, 0.72, 0.70, 1 },
+            faint     = { 0.56, 0.56, 0.55, 1 },
+            -- Solid mid-tones of the frame colour, so white text stays readable on an on button.
+            royal     = shade(light, 0.55),
+            tint      = fade(accent, 0.30),
+            hover     = shade(light, 0.65),
+            ember     = { 0.98, 0.82, 0.38, 1 },
+            danger    = { 1.00, 0.52, 0.46, 1 },
+            gold      = { 1.00, 0.87, 0.48, 1 },
+            success   = { 0.52, 0.90, 0.52, 1 },
+        },
+        -- Alternate rows only lift the art a touch: a solid fill would paint stripes across it.
+        style = { window = 0.0, frame = 2.0, row_alt = { 1, 1, 1, 0.04 } },
+        skin  = window_type,
+    };
+end
+
+-- In the order the settings panel lists them. Phoenix comes first and is the starting theme.
+ui.THEMES = {
+    { key = 'phoenix', label = 'Phoenix' },
+    { key = 'classic', label = 'Classic' },
+    { key = 'neutral', label = 'Neutral' },
+};
+ui.STARTING_THEME = 'phoenix';
+
+local BUILDERS = { phoenix = phoenix_theme, classic = classic_theme, neutral = neutral_theme };
+
+-- Matches a theme by key or label, ignoring case.
+function ui.find_theme(text)
+    local wanted = (text or ''):lower();
+    for _, theme in ipairs(ui.THEMES) do
+        if (theme.key == wanted or theme.label:lower() == wanted) then
+            return theme.key;
+        end
+    end
+    return nil;
+end
+
+function ui.theme_label(key)
+    for _, theme in ipairs(ui.THEMES) do
+        if (theme.key == key) then
+            return theme.label;
+        end
+    end
+    return ui.THEMES[1].label;
+end
+
+-- The game art is drawn by skin.lua, which needs Ashita's Direct3D bindings. It is loaded the first
+-- time Classic is picked, and Classic keeps its flat colours if it can't load.
+local skin_module = nil;
+
+local function skin()
+    if (skin_module == nil) then
+        local ok, loaded = pcall(require, 'skin');
+        skin_module = ok and loaded or false;
+    end
+    return skin_module or nil;
+end
+
+ui.COLOR = T{ clear = { 0, 0, 0, 0 } };
+
+local COLOR   = ui.COLOR;
+local current = { key = nil, window_type = nil, theme = nil };
+
+-- Applies a theme, refilling ui.COLOR in place. pinned_type is a Window Type (0-7) for Classic to
+-- keep, or -1 to follow the game. Cheap to call every frame: it only refills when something changed.
+function ui.apply_theme(key, pinned_type)
+    key = BUILDERS[key] and key or ui.STARTING_THEME;
+
+    local window_type = nil;
+    if (key == 'classic') then
+        local module = skin();
+        if (module) then
+            window_type = module.window_type(pinned_type);
+        elseif (pinned_type and pinned_type >= 0 and pinned_type <= 7) then
+            window_type = pinned_type;
+        else
+            window_type = 0;
+        end
+    end
+    if (current.key == key and current.window_type == window_type) then
+        return current.theme;
+    end
+
+    local theme = BUILDERS[key](window_type);
+    for name, color in pairs(theme.palette) do
+        COLOR[name] = color;
+    end
+    current.key         = key;
+    current.window_type = window_type;
+    current.theme       = theme;
+    return theme;
+end
+
+-- True when the active theme is drawing the game's window art, so ImGui's own fill is hidden.
+local function art_showing()
+    local theme  = current.theme;
+    local module = theme and theme.skin and skin();
+    return module and module.get(theme.skin) ~= nil or false;
+end
+
+-- Paints the game's window art behind the window that was just begun, when Classic is showing.
+-- titled is whether the window has a title bar.
+function ui.draw_skin(titled, alpha)
+    local theme = current.theme;
+    if (theme and theme.skin and art_showing()) then
+        skin().draw(theme.skin, titled, alpha);
+    end
+end
+
+-- Frees the window art's textures, for unloading the addon.
+function ui.release_skin()
+    if (skin_module) then
+        skin_module.release();
+    end
+end
+
+ui.apply_theme(ui.STARTING_THEME);
 
 -----------------------------------
 -- Messages and time
@@ -141,8 +355,11 @@ end
 
 -- Returns how many colours and style vars were pushed, for the matching pops.
 function ui.push_theme(alpha)
+    -- Under Classic the art carries the window's opacity, so ImGui's own fill is switched off.
+    local fill = art_showing() and 0 or alpha;
+    local style = current.theme.style;
     local colors = {
-        { ImGuiCol_WindowBg,          { COLOR.abyss[1], COLOR.abyss[2], COLOR.abyss[3], alpha } },
+        { ImGuiCol_WindowBg,          { COLOR.abyss[1], COLOR.abyss[2], COLOR.abyss[3], fill } },
         { ImGuiCol_TitleBg,           COLOR.surface1 },
         { ImGuiCol_TitleBgActive,     COLOR.surface2 },
         { ImGuiCol_TitleBgCollapsed,  COLOR.surface1 },
@@ -163,7 +380,7 @@ function ui.push_theme(alpha)
         { ImGuiCol_TableBorderLight,  COLOR.subtle   },
         { ImGuiCol_TableBorderStrong, COLOR.border   },
         { ImGuiCol_TableRowBg,        COLOR.clear    },
-        { ImGuiCol_TableRowBgAlt,     COLOR.surface1 },
+        { ImGuiCol_TableRowBgAlt,     style.row_alt or COLOR.surface1 },
         { ImGuiCol_PopupBg,           COLOR.surface1 },
         { ImGuiCol_CheckMark,         COLOR.royal    },
         { ImGuiCol_Button,            COLOR.royal    },
@@ -177,8 +394,8 @@ function ui.push_theme(alpha)
         imgui.PushStyleColor(color[1], color[2]);
     end
 
-    imgui.PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0);
-    imgui.PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0);
+    imgui.PushStyleVar(ImGuiStyleVar_WindowRounding, style.window);
+    imgui.PushStyleVar(ImGuiStyleVar_FrameRounding, style.frame);
     imgui.PushStyleVar(ImGuiStyleVar_WindowPadding, { ui.PADDING, 10 });
     imgui.PushStyleVar(ImGuiStyleVar_ItemSpacing, { 8, 5 });
     imgui.PushStyleVar(ImGuiStyleVar_CellPadding, { 4, 3 });
