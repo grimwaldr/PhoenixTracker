@@ -161,6 +161,13 @@ class GameFontTests(unittest.TestCase):
         # Eight ring copies and one fill for each of the two letters.
         self.assertEqual(self.images(), 18)
 
+    def test_dark_text_on_a_bright_banner_gets_no_ring(self):
+        self.h.dispatch('command', command='/ptrack theme classic 2', blocked=False)
+        self.render()
+        self.h.lua.execute('drawn_images = {}')
+        self.ui.text(self.h.lua.table(0.1, 0.1, 0.1, 1), 'AB')
+        self.assertEqual(self.images(), 2)
+
     def use_numbers(self):
         self.h.lua.execute("fake_numbers = { id = 88, width = 256, height = 256, top = 131, bottom = 154, "
                            "digits = require('datfile').DIGITS }")

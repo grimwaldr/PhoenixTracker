@@ -350,6 +350,12 @@ end
 local RING       = { { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 }, { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } };
 local RING_ALPHA = 0.9;
 
+-- A dark edge only helps light text. Dark text (a label on a bright banner) is drawn without one,
+-- or the letters and their edge run together.
+local function wants_edge(color)
+    return 0.299 * color[1] + 0.587 * color[2] + 0.114 * color[3] >= 0.45;
+end
+
 -- Draws the letters on whole pixels, centred in the line, as the game draws its own.
 local function draw_game_text(list, font, x, y, color, text)
     local x0   = math.floor(x + 0.5);
@@ -357,7 +363,7 @@ local function draw_game_text(list, font, x, y, color, text)
     local fill = imgui.GetColorU32(color);
     local dark = imgui.GetColorU32({ 0, 0, 0, RING_ALPHA * (color[4] or 1) });
     -- Every ring first, so one letter's ring never covers the letter before it.
-    for pass = 1, 2 do
+    for pass = wants_edge(color) and 1 or 2, 2 do
         local left = x0;
         for index = 1, #text do
             local code  = text:byte(index);
@@ -622,7 +628,7 @@ function ui.add_text(list, x, y, color, text)
     local font  = imgui.GetFont();
     local size  = imgui.GetFontSize();
     local fill  = imgui.GetColorU32(color);
-    if (outlined()) then
+    if (outlined() and wants_edge(color)) then
         local reach = math.max(1, math.floor(size / 24 + 0.5));
         local dark  = imgui.GetColorU32({ 0, 0, 0, color[4] or 1 });
         for _, offset in ipairs(OUTLINE) do
