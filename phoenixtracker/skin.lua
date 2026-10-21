@@ -236,7 +236,8 @@ local function load_numbers(sheet)
     if (sheet == nil or sheet.width ~= 256 or sheet.height ~= 256) then
         return nil;
     end
-    local doubled = datfile.double_alpha(sheet);
+    local evened  = datfile.even_outline(sheet);
+    local doubled = evened and datfile.double_alpha(evened);
     local texture = doubled and create_texture(doubled);
     if (texture == nil) then
         return nil;

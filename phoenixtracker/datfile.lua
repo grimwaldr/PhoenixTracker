@@ -147,7 +147,7 @@ end
 datfile.DIGIT_TOP    = 131;
 datfile.DIGIT_BOTTOM = 154;
 datfile.DIGITS = {
-    ['0'] = { 16, 34 }, ['1'] = { 38, 51 }, ['2'] = { 54, 73 }, ['3'] = { 75, 93 }, ['4'] = { 91, 112 },
+    ['0'] = { 16, 34 }, ['1'] = { 38, 51 }, ['2'] = { 54, 73 }, ['3'] = { 75, 93 }, ['4'] = { 94, 112 },
     ['5'] = { 114, 132 }, ['6'] = { 134, 151 }, ['7'] = { 156, 172 }, ['8'] = { 173, 191 }, ['9'] = { 193, 210 },
 };
 
@@ -168,6 +168,53 @@ function datfile.double_alpha(texture)
     for offset = 1, #blocks, 16 do
         parts[#parts + 1] = blocks:sub(offset, offset + 7):gsub('.', function (c) return doubled[c:byte()]; end);
         parts[#parts + 1] = blocks:sub(offset + 8, offset + 15);
+    end
+    return { name = texture.name, width = texture.width, height = texture.height, fourcc = texture.fourcc, blocks = table.concat(parts) };
+end
+
+-- A copy of a DXT3 texture with stray black pixels in its outlines made the outline's grey. The
+-- digits' outlines are dark grey with black specks the compression left in, which show as dots.
+-- Only pixels that are drawn (alpha above 0), near black, and in a block that also holds the grey
+-- are changed, so the fills and the see-through parts stay as they are.
+local function red(colour)
+    return math.floor(bit.rshift(colour, 11) % 32 * 255 / 31);
+end
+
+function datfile.even_outline(texture)
+    if (texture.fourcc ~= 'DXT3') then
+        return nil;
+    end
+    local blocks = texture.blocks;
+    local parts  = {};
+    for offset = 1, #blocks, 16 do
+        local block = blocks:sub(offset, offset + 15);
+        local c0    = block:byte(9) + block:byte(10) * 256;
+        local c1    = block:byte(11) + block:byte(12) * 256;
+        local r0, r1 = red(c0), red(c1);
+        local shades = { [0] = r0, r1, math.floor((2 * r0 + r1) / 3), math.floor((r0 + 2 * r1) / 3) };
+        local grey = nil;
+        for index = 0, 3 do
+            if (shades[index] >= 25 and shades[index] <= 80 and (grey == nil or shades[index] > shades[grey])) then
+                grey = index;
+            end
+        end
+        if (grey ~= nil) then
+            local indices = block:byte(13) + block:byte(14) * 256 + block:byte(15) * 65536 + block:byte(16) * 16777216;
+            local changed = indices;
+            for pixel = 0, 15 do
+                local alpha = bit.rshift(block:byte(math.floor(pixel / 2) + 1), (pixel % 2) * 4) % 16;
+                local index = bit.rshift(indices, pixel * 2) % 4;
+                if (alpha > 0 and shades[index] < 20) then
+                    changed = bit.bor(bit.band(changed, bit.bnot(bit.lshift(3, pixel * 2))), bit.lshift(grey, pixel * 2));
+                end
+            end
+            if (changed ~= indices) then
+                changed = changed % 4294967296;
+                block = block:sub(1, 12) .. string.char(changed % 256, math.floor(changed / 256) % 256,
+                    math.floor(changed / 65536) % 256, math.floor(changed / 16777216) % 256);
+            end
+        end
+        parts[#parts + 1] = block;
     end
     return { name = texture.name, width = texture.width, height = texture.height, fourcc = texture.fourcc, blocks = table.concat(parts) };
 end

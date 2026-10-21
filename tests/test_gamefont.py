@@ -65,6 +65,23 @@ class DoubleAlphaTests(unittest.TestCase):
                          bytes([0x00, 0x42, 0xF8, 0xFF, 0xEE, 0x0F, 0xF0, 0x20]) + colour)
         self.assertIsNone(datfile.double_alpha(h.table({'fourcc': 'DXT1', 'blocks': b''})))
 
+    def test_black_specks_in_a_drawn_outline_take_the_outline_grey(self):
+        h = Harness()
+        datfile = h.load('datfile')
+        grey, black = 0x2800, 0x0000                 # red 41ish and 0, as the digit outlines are
+        # Pixel 0 drawn and black (index 1), pixel 1 drawn and grey (index 0), pixel 2 see-through
+        # and black, the rest see-through grey.
+        alpha = bytes([0xFF, 0x00]) + bytes(6)
+        colour = grey.to_bytes(2, 'little') + black.to_bytes(2, 'little') + bytes([0b00000001, 0b00000000, 0, 0])
+        block = alpha + colour
+        evened = datfile.even_outline(h.table({'name': 'font', 'width': 4, 'height': 4, 'fourcc': 'DXT3', 'blocks': block}))
+        as_bytes = h.lua.eval('function(t) return { t.blocks:byte(1, -1) } end')
+        out = bytes(as_bytes(evened).values())
+        self.assertEqual(out[:12], block[:12])
+        self.assertEqual(out[12] & 0b11, 0)          # the drawn black pixel now uses the grey
+        self.assertEqual(out[12] & 0b110000, 0)      # the see-through one was left alone
+        self.assertIsNone(datfile.even_outline(h.table({'fourcc': 'DXT1', 'blocks': b''})))
+
     def test_each_digit_box_is_inside_the_sheet_and_in_order(self):
         digits = Harness().load('datfile').DIGITS
         boxes = [tuple(digits[str(d)].values()) for d in range(10)]
