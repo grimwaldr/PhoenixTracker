@@ -46,14 +46,17 @@ end
 -- Every theme fills the same names:
 --   abyss      window background, and dark text on a filled banner
 --   surface1   title bar, popups and alternate table rows
---   surface2   an off toggle button, input boxes and the empty part of a bar
+--   surface2   input boxes and the empty part of a bar
+--   button, button_hover   an off toggle button and its hover state
 --   border, subtle   window and table lines
 --   text, secondary, muted, faint   text from brightest to dimmest
 --   peach      the character name and other headline text
 --   royal, hover, tint   an on toggle button, filled bars, and their hover states
 --   ember      a highlighted number or countdown
 --   danger, gold, success   bad, notable and good
--- style holds the corner rounding, which Classic squares off to match the game's windows.
+-- style holds the corner rounding, which Classic squares off to match the game's windows. A theme
+-- can also set imgui (ImGui colours by ImGuiCol_ name, on top of the ones built from the palette)
+-- and vars (ImGui style sizes by ImGuiStyleVar_ name).
 
 -- Skold's original palette, after phoenix-xi.com.
 local function phoenix_theme()
@@ -69,6 +72,8 @@ local function phoenix_theme()
             peach     = rgb('d2abab'),
             muted     = rgb('8a6b6b'),
             faint     = rgb('5a4545'),
+            button       = rgb('321f1f'),
+            button_hover = rgb('c55151', 0.30),
             royal     = rgb('c55151'),
             tint      = rgb('c55151', 0.30),
             hover     = rgb('d45e5e'),
@@ -95,6 +100,8 @@ local function neutral_theme()
             peach     = rgb('a9c4f5'),
             muted     = rgb('8b8f99'),
             faint     = rgb('5b5e66'),
+            button       = rgb('2c2e35'),
+            button_hover = rgb('3f6fb8', 0.30),
             royal     = rgb('3f6fb8'),
             tint      = rgb('3f6fb8', 0.30),
             hover     = rgb('4c7ec9'),
@@ -124,36 +131,79 @@ local WINDOW_ART = {
 -- The middle of the top-down shading the art is drawn with.
 local ART_SHADE = 0.62;
 
--- The game's own window look, following Config > Windows > Shared > Window Type.
+-- The game's own window look, following Config > Windows > Shared > Window Type. The colours and
+-- sizes are craftbook's Classic theme, so the controls sit on the art the same way: buttons are a
+-- see-through tint of the frame colour, input boxes a dark inset, the title bar solid.
 local function classic_theme(window_type)
     local art    = WINDOW_ART[window_type] or WINDOW_ART[0];
     local panel  = shade(art.background, ART_SHADE);
     local accent = lighten(art.frame, 0.25);
     local light  = lighten(art.frame, 0.60);
+    local text   = { 0.96, 0.96, 0.93, 1 };
+    local inset  = { 0, 0, 0, 0.34 };
     return {
         palette = {
-            abyss     = panel,
-            surface1  = shade(panel, 0.80),
-            surface2  = { 0, 0, 0, 0.34 },
-            border    = fade(accent, 0.55),
-            subtle    = fade(accent, 0.25),
-            text      = { 0.96, 0.96, 0.93, 1 },
-            secondary = { 0.88, 0.88, 0.85, 1 },
-            peach     = { 1.00, 0.87, 0.48, 1 },
-            muted     = { 0.72, 0.72, 0.70, 1 },
-            faint     = { 0.56, 0.56, 0.55, 1 },
-            -- Solid mid-tones of the frame colour, so white text stays readable on an on button.
-            royal     = shade(light, 0.55),
-            tint      = fade(accent, 0.30),
-            hover     = shade(light, 0.65),
-            ember     = { 0.98, 0.82, 0.38, 1 },
-            danger    = { 1.00, 0.52, 0.46, 1 },
-            gold      = { 1.00, 0.87, 0.48, 1 },
-            success   = { 0.52, 0.90, 0.52, 1 },
+            abyss        = panel,
+            surface1     = shade(panel, 0.80),
+            surface2     = inset,
+            border       = fade(accent, 0.55),
+            subtle       = fade(accent, 0.25),
+            text         = text,
+            secondary    = { 0.88, 0.88, 0.85, 1 },
+            peach        = { 1.00, 0.87, 0.48, 1 },
+            muted        = { 0.72, 0.72, 0.70, 1 },
+            faint        = { 0.56, 0.56, 0.55, 1 },
+            button       = fade(accent, 0.30),
+            button_hover = fade(accent, 0.48),
+            royal        = fade(accent, 0.66),
+            tint         = fade(accent, 0.24),
+            hover        = fade(accent, 0.80),
+            ember        = { 0.98, 0.82, 0.38, 1 },
+            danger       = { 1.00, 0.52, 0.46, 1 },
+            gold         = { 1.00, 0.87, 0.48, 1 },
+            success      = { 0.52, 0.90, 0.52, 1 },
         },
-        -- Alternate rows only lift the art a touch: a solid fill would paint stripes across it.
-        style = { window = 0.0, frame = 2.0, row_alt = { 1, 1, 1, 0.04 } },
-        skin  = window_type,
+        style = { window = 0.0, frame = 2.0 },
+        imgui = {
+            TitleBg              = shade(panel, 0.80),
+            TitleBgActive        = shade(panel, 1.05),
+            TitleBgCollapsed     = shade(panel, 0.80, 0.90),
+            PopupBg              = shade(panel, 0.85, 0.98),
+            Border               = fade(accent, 0.55),
+            Separator            = fade(accent, 0.50),
+            TextDisabled         = { 0.72, 0.72, 0.70, 1 },
+            FrameBg              = inset,
+            FrameBgHovered       = fade(accent, 0.24),
+            FrameBgActive        = fade(accent, 0.36),
+            Button               = fade(accent, 0.30),
+            ButtonHovered        = fade(accent, 0.48),
+            ButtonActive         = fade(accent, 0.66),
+            Header               = fade(accent, 0.30),
+            HeaderHovered        = fade(accent, 0.44),
+            HeaderActive         = fade(accent, 0.58),
+            CheckMark            = light,
+            SliderGrab           = fade(light, 0.70),
+            SliderGrabActive     = light,
+            PlotHistogram        = fade(accent, 0.66),
+            ScrollbarBg          = { 0, 0, 0, 0.30 },
+            ScrollbarGrab        = fade(accent, 0.55),
+            ScrollbarGrabHovered = fade(accent, 0.80),
+            ScrollbarGrabActive  = light,
+            TableHeaderBg        = inset,
+            TableBorderStrong    = fade(accent, 0.45),
+            TableBorderLight     = fade(accent, 0.25),
+            -- Alternate rows only lift the art a touch: a solid fill would paint stripes across it.
+            TableRowBgAlt        = { 1, 1, 1, 0.03 },
+        },
+        vars = {
+            FramePadding     = { 8, 5 },
+            ItemSpacing      = { 8, 6 },
+            GrabRounding     = 2.0,
+            ScrollbarSize    = 12.0,
+            -- The frame comes from the art.
+            WindowBorderSize = 0.0,
+        },
+        skin = window_type,
     };
 end
 
@@ -319,8 +369,8 @@ function ui.stat_cell(label, value, color)
 end
 
 function ui.toggle_button(label, on, width)
-    imgui.PushStyleColor(ImGuiCol_Button, on and COLOR.royal or COLOR.surface2);
-    imgui.PushStyleColor(ImGuiCol_ButtonHovered, on and COLOR.hover or COLOR.tint);
+    imgui.PushStyleColor(ImGuiCol_Button, on and COLOR.royal or COLOR.button);
+    imgui.PushStyleColor(ImGuiCol_ButtonHovered, on and COLOR.hover or COLOR.button_hover);
     imgui.PushStyleColor(ImGuiCol_ButtonActive, COLOR.royal);
     imgui.PushStyleColor(ImGuiCol_Text, on and COLOR.text or COLOR.muted);
     local clicked = imgui.Button(label, { width, 0 });
@@ -380,7 +430,7 @@ function ui.push_theme(alpha)
         { ImGuiCol_TableBorderLight,  COLOR.subtle   },
         { ImGuiCol_TableBorderStrong, COLOR.border   },
         { ImGuiCol_TableRowBg,        COLOR.clear    },
-        { ImGuiCol_TableRowBgAlt,     style.row_alt or COLOR.surface1 },
+        { ImGuiCol_TableRowBgAlt,     COLOR.surface1 },
         { ImGuiCol_PopupBg,           COLOR.surface1 },
         { ImGuiCol_CheckMark,         COLOR.royal    },
         { ImGuiCol_Button,            COLOR.royal    },
@@ -393,14 +443,31 @@ function ui.push_theme(alpha)
     for _, color in ipairs(colors) do
         imgui.PushStyleColor(color[1], color[2]);
     end
+    -- A theme's own ImGui colours go on top. Names this ImGui build lacks are skipped.
+    local pushed = #colors;
+    for name, value in pairs(current.theme.imgui or {}) do
+        local enum = _G['ImGuiCol_' .. name];
+        if (enum ~= nil) then
+            imgui.PushStyleColor(enum, value);
+            pushed = pushed + 1;
+        end
+    end
 
     imgui.PushStyleVar(ImGuiStyleVar_WindowRounding, style.window);
     imgui.PushStyleVar(ImGuiStyleVar_FrameRounding, style.frame);
     imgui.PushStyleVar(ImGuiStyleVar_WindowPadding, { ui.PADDING, 10 });
     imgui.PushStyleVar(ImGuiStyleVar_ItemSpacing, { 8, 5 });
     imgui.PushStyleVar(ImGuiStyleVar_CellPadding, { 4, 3 });
+    local vars = 5;
+    for name, value in pairs(current.theme.vars or {}) do
+        local enum = _G['ImGuiStyleVar_' .. name];
+        if (enum ~= nil) then
+            imgui.PushStyleVar(enum, value);
+            vars = vars + 1;
+        end
+    end
 
-    return #colors, 5;
+    return pushed, vars;
 end
 
 -----------------------------------
