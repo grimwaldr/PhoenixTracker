@@ -255,6 +255,7 @@ local imgui = setmetatable({
     BeginTable = function() return true end,
     CollapsingHeader = function(label) _capture_header(label); return true end,
     CalcTextSize = function(text) return #text * 7 * font_sizes[#font_sizes] / 16 end,
+    GetCursorPosX = function() return 12 end,
     GetFontSize = function() return font_sizes[#font_sizes] end,
     PushFont = function(_, size) font_sizes[#font_sizes + 1] = size or font_sizes[#font_sizes] end,
     PopFont = function() if #font_sizes > 1 then font_sizes[#font_sizes] = nil end end,

@@ -95,6 +95,44 @@ class HelmTabTests(unittest.TestCase):
         self.assertIn('Excavation session stats cleared.', h.messages)
         self.assertFalse(h.command('account', ['other'], '/pexcavate'))
 
+    def lines(self, h):
+        """How many lines of text the tab lays out, counting each line of a multi-line text."""
+        h.draw()
+        return sum(text.count('\n') + 1 for text in h.text)
+
+    def gather(self, h, item, sequence):
+        zone = h.load('helmdata').types[4].zones[62]
+        npc, event = next(iter(zone.npcs.items()))
+        h.packet(0x034, packet(52, u16={2: sequence, 0x2A: 62, 0x2C: event}, u32={4: npc, 8: item}))
+
+    def award(self, h, item, count):
+        h.packet(0x020, packet(u32={4: count}, u16={12: item}, u8={14: 0, 15: 1}))
+        h.state.inventory[0] = h.table({1: {'Id': item, 'Count': count}})
+
+    def test_a_find_waiting_for_its_item_does_not_resize_the_window(self):
+        h = self.tab('mining', 62)
+        self.gather(h, 739, 1)
+        self.award(h, 739, 1)
+        settled = self.lines(h)
+
+        self.gather(h, 739, 2)
+        waiting = self.lines(h)
+        self.assertTrue(any(text.startswith('Waiting for 1 finds') for text in h.text))
+        self.assertEqual(waiting, settled)
+
+        self.award(h, 739, 2)
+        self.assertEqual(self.lines(h), settled)
+
+    def test_weather_notes_keep_the_room_of_the_longest_one(self):
+        h = self.tab('harvesting', 123)  # Yuhtunga Jungle's points need rain or squalls.
+        seen, counts = set(), set()
+        for weather in (0, 6, 0):  # Clear, rain, then clear again.
+            h.packet(0x057, packet(u16={8: weather}))
+            counts.add(self.lines(h))
+            seen.update(text.split('\n')[0] for text in h.text if 'rain or squalls' in text.lower())
+        self.assertEqual(len(seen), 2)
+        self.assertEqual(len(counts), 1)
+
 
 if __name__ == '__main__':
     unittest.main()
