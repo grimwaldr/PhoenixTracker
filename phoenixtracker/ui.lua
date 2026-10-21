@@ -782,8 +782,12 @@ function ui.table_headers()
 end
 
 -- Use in place of imgui.Button for a button whose label is only shown: under an outlined theme the
--- label is drawn in the theme's text, centred as ImGui centres it. color is the label's colour.
-function ui.button(label, id, size, color)
+-- label is drawn in the theme's text, centred as ImGui centres it. color is the label's colour, and
+-- outlined_color its colour under an outlined theme, if different.
+function ui.button(label, id, size, color, outlined_color)
+    if (outlined() and plain(label)) then
+        color = outlined_color or color;
+    end
     if (not outlined() or not plain(label)) then
         imgui.PushStyleColor(ImGuiCol_Text, color or COLOR.text);
         local clicked = imgui.Button(label .. '##' .. id, size);

@@ -593,7 +593,8 @@ local function draw_hook(width, scale)
         imgui.PushStyleColor(ImGuiCol_Button, color);
         imgui.PushStyleColor(ImGuiCol_ButtonHovered, color);
         imgui.PushStyleColor(ImGuiCol_ButtonActive, color);
-        ui.button(label, 'pf_verdict', { width, imgui.GetTextLineHeight() + 6 * scale }, COLOR.abyss);
+        -- Dark text on the banner, except under Classic, where it's the game's white outlined text.
+        ui.button(label, 'pf_verdict', { width, imgui.GetTextLineHeight() + 6 * scale }, COLOR.abyss, COLOR.text);
         imgui.PopStyleColor(3);
     end
     imgui.Spacing();
