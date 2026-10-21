@@ -467,6 +467,58 @@ function ui.seconds_until_reset()
     return 86400 - ((os.time() + ui.JST_OFFSET) % 86400);
 end
 
+-----------------------------------
+-- Active time
+-----------------------------------
+-- A session clock that only runs while you're doing the activity. It starts with an action (a cast,
+-- a dig, a gather) and keeps running until ACTIVE_GRACE seconds after the last one ends, so walking
+-- off, a town trip or being away doesn't count. An action that never reports its end stops counting
+-- after ACTIVE_LONGEST seconds.
+ui.ACTIVE_GRACE   = 30;
+ui.ACTIVE_LONGEST = 180;
+
+function ui.new_clock()
+    return { banked = 0, from = nil, stop_at = nil };
+end
+
+-- An action began. now defaults to os.time().
+function ui.clock_start(clock, now)
+    now = now or os.time();
+    if (clock.from ~= nil and now >= clock.stop_at) then
+        clock.banked = clock.banked + (clock.stop_at - clock.from);
+        clock.from   = nil;
+    end
+    clock.from    = clock.from or now;
+    clock.stop_at = now + ui.ACTIVE_LONGEST;
+end
+
+-- An action ended. For one with no separate end (a dig, a gather), call it right after clock_start.
+function ui.clock_finish(clock, now)
+    now = now or os.time();
+    if (clock.from == nil or now >= clock.stop_at) then
+        ui.clock_start(clock, now);
+    end
+    clock.stop_at = now + ui.ACTIVE_GRACE;
+end
+
+-- Seconds of active time so far, and whether the clock is paused.
+function ui.clock_seconds(clock, now)
+    now = now or os.time();
+    if (clock == nil or clock.from == nil) then
+        return clock and clock.banked or 0, true;
+    end
+    return clock.banked + (math.min(now, clock.stop_at) - clock.from), now >= clock.stop_at;
+end
+
+-- The Session grid's Active cell: the label (Active, or Paused once you've stopped) and the time.
+function ui.active_cell(clock)
+    local seconds, paused = ui.clock_seconds(clock);
+    if (seconds <= 0) then
+        return 'Active', '-', nil;
+    end
+    return paused and 'Paused' or 'Active', ui.duration(seconds), paused and COLOR.gold or nil;
+end
+
 function ui.duration(seconds)
     seconds = math.max(0, math.floor(seconds));
     local hours   = math.floor(seconds / 3600);

@@ -65,6 +65,7 @@ local function new_session()
         after_cap = 0,
         xp        = 0,
         levels    = 0,
+        clock     = ui.new_clock(),
     };
 end
 
@@ -430,6 +431,8 @@ local function on_dig()
     session.started = session.started or os.time();
     session.digs    = session.digs + 1;
     pd.last_dig     = os.clock();
+    ui.clock_start(session.clock);
+    ui.clock_finish(session.clock);
 
     local dig = T{ at = os.clock(), day = jst_day() };
     if (pd.daily and pd.daily.finds >= DAILY_LIMIT) then
@@ -600,7 +603,9 @@ local function draw_session(width)
     end
 
     local session = pd.session;
-    local elapsed = session.started and (os.time() - session.started) or 0;
+    -- Rates use active time, so time spent away from digging doesn't drag them down.
+    local elapsed = ui.clock_seconds(session.clock);
+    local total   = session.started and (os.time() - session.started) or 0;
 
     -- Digs after the daily limit can't find anything, so they're left out of the hit rate.
     local hit_rate = '-';
@@ -652,6 +657,8 @@ local function draw_session(width)
         -- Too close sits under Nothing (it's a kind of nothing) and Expected under Hit rate to compare.
         stat_cell(labels[3][2], tostring(session.too_close), session.too_close > 0 and COLOR.ember or nil);
         stat_cell(labels[4][2], wing_skill() and ('%d%%'):fmt(digdata.accuracy[dig_rank()]) or '-');
+        stat_cell(ui.active_cell(session.clock));
+        stat_cell('Total', total > 0 and duration(total) or '-', COLOR.muted);
         imgui.EndTable();
     end
     if (session.after_cap > 0) then

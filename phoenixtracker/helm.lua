@@ -126,7 +126,9 @@ function helm.new(type_id)
         end
 
         local session  = snapshot.session;
-        local elapsed  = session.started and (os.time() - session.started) or 0;
+        -- Rates use active time, so time spent away from gathering doesn't drag them down.
+        local elapsed  = ui.clock_seconds(session.clock);
+        local total    = session.started and (os.time() - session.started) or 0;
         local hit_rate = session.attempts > 0 and percent(session.finds * 100 / session.attempts) or '-';
         local per_hour = elapsed >= 60 and ('%.0f'):fmt(session.finds * 3600 / elapsed) or '-';
         local expected = pool.known and percent(pool.obtain_rate) or '-';
@@ -140,6 +142,8 @@ function helm.new(type_id)
             ui.stat_cell('Hit rate', hit_rate);
             ui.stat_cell('Expected', expected);
             ui.stat_cell('Per hour', per_hour);
+            ui.stat_cell(ui.active_cell(session.clock));
+            ui.stat_cell('Total', total > 0 and ui.duration(total) or '-', COLOR.muted);
             imgui.EndTable();
         end
         -- A find waits a moment for its item after every gather, so this line is always here and only

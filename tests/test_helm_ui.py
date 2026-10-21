@@ -84,7 +84,7 @@ class HelmTabTests(unittest.TestCase):
         self.assertEqual(cells['Finds'], '0')
         self.assertEqual(cells['Nothing'], '1')
         self.assertEqual(cells['Broken'], '1')
-        self.assertEqual(list(cells), ['Attempts', 'Finds', 'Nothing', 'Broken', 'Hit rate', 'Expected', 'Per hour'])
+        self.assertEqual(list(cells), ['Attempts', 'Finds', 'Nothing', 'Broken', 'Hit rate', 'Expected', 'Per hour', 'Active', 'Total'])
         self.assertEqual(h.activities, ['harvest'])
 
     def test_pool_command_and_session_reset_are_scoped_to_the_tab(self):

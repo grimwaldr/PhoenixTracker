@@ -13,7 +13,7 @@ Phoenix Tracker only watches. It reads what the server already sends to your gam
 - **Daily count:** catches out of 200 with a progress bar, how many you have left, and a countdown to the reset.
 - **Rod and bait:** what you have equipped, with the bait left in the stack and across your inventory and wardrobes.
 - **On the line:** when something bites, lists what it could be and the odds of each, based on where you are standing, your rod, your bait and your fishing skill. It never reads the server's hidden fishing packets, so it only knows what you can see yourself.
-- **Session stats:** casts, bites, catches, empty casts, cancellations, hit rate, catches per hour, time left to reach 200, your fishing skill and how much you've gained this session.
+- **Session stats:** casts, bites, catches, empty casts, cancellations, hit rate, catches per hour, time left to reach 200, your fishing skill and how much you've gained this session, and how long you've been fishing (see Active time below).
 - **Today's catch:** everything you've landed today and how many of each.
 - **Vibrate on hook:** optional controller rumble when something bites, with separate toggles for small fish, big fish, items and monsters, plus an optional buzz when nothing is caught.
 - **Fish you want to catch:** choose which hook types (small fish, big fish, items, monsters) you want. Anything else shows as a red "Bad Catch - Not Wanted".
@@ -22,7 +22,7 @@ Phoenix Tracker only watches. It reads what the server already sends to your gam
 
 - **Daily count:** finds out of 100 with a progress bar, how many you have left, and a countdown to the reset.
 - **Zone and greens:** whether you can dig where you are, the current weather, how many Gysahl Greens are in your inventory, and a countdown to your next dig.
-- **Session stats:** greens used, greens still needed to reach 100, digs that found nothing, hit rate, finds per hour, time left to reach 100, the hit rate to expect at your rank, and digs wasted by digging too close to your last spot.
+- **Session stats:** greens used, greens still needed to reach 100, digs that found nothing, hit rate, finds per hour, time left to reach 100, the hit rate to expect at your rank, digs wasted by digging too close to your last spot, and how long you've been digging.
 - **Wing skill:** your level and rank, experience gained this session, a bar toward your next level, and roughly how many finds and digs it will take to get there.
 - **Possible finds:** everything that can be dug up where you are, with the odds and experience of each at your rank.
 - **Today's dig:** everything you've dug up today and how many of each, plus anything thrown away because your bags were full.
@@ -30,7 +30,7 @@ Phoenix Tracker only watches. It reads what the server already sends to your gam
 ### Harvesting, Logging, Mining and Excavation
 
 - **Zone and tools:** the zone you're in, how many sickles, hatchets or pickaxes are in your inventory, a warning if your main job level is too low for the zone, and whether the weather is right for harvesting in Yuhtunga and Yhoator.
-- **Session stats:** attempts, finds, attempts that found nothing, broken tools, hit rate, finds per hour, and the hit rate to expect in that zone.
+- **Session stats:** attempts, finds, attempts that found nothing, broken tools, hit rate, finds per hour, the hit rate to expect in that zone, and how long you've been gathering.
 - **Possible finds:** everything you can find where you are, with the odds of each. Logging and Mining show the odds twice: **Fresh**, before any rare-item fatigue, and **Now**, with the fatigue the addon has counted.
 - **Rare-item fatigue:** how many rare items you've found in the zones where they get rarer as you find them: Lufaise Meadows, Misareaux Coast and Ghelsba Outpost for logging, Halvung, Gusgen Mines and Ifrit's Cauldron for mining, and the Adaman and Khroma caps in Mount Zhayolm. If the addon doesn't know your count, it says Unknown instead of guessing. Harvesting and Excavation have no rare-item fatigue, so those tabs don't have this section.
 - **Today's items:** everything you've gathered today and how many of each, saved separately for each character and activity.
@@ -95,6 +95,10 @@ The 200 limit is shared by every character on your account. The addon can't see 
 If the count ever drifts, for example because you fished with the addon unloaded, fix it with `/pfish set <count>`.
 
 Session **Casts** includes empty casts and cancellations. **Nothing** counts casts where nothing bites; **Cancelled** includes giving up with a lure and casts interrupted before a result. These do not use the daily catch allowance. A cast that ends without a result message may take a moment to appear as cancelled.
+
+## Active time
+
+Every tab's Session section shows **Active**, the time you've actually spent on the activity, and **Total**, the time since your first cast, dig or gather. The Active clock runs from each action until 30 seconds after it ends: from the cast until the fish is caught or lost, or from each dig or gather. If you start again within those 30 seconds it keeps going, otherwise it stops and the cell reads **Paused**. Walking to a new spot, a trip to town or time away doesn't count, and an action the addon never sees end stops counting after 3 minutes. Per hour and the time left to the daily limit use Active time.
 
 ## What's on the line
 

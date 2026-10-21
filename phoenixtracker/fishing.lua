@@ -168,6 +168,7 @@ local function new_session()
         points   = 0,
         skill    = 0,
         outcomes = T{},
+        clock    = ui.new_clock(),
     };
 end
 
@@ -426,6 +427,7 @@ local function record_outcome(outcome, final)
     cast.outcome   = outcome;
     cast.final     = final;
     cast.ending_at = nil;
+    ui.clock_finish(session.clock);
     return true;
 end
 
@@ -435,12 +437,14 @@ local function begin_cast()
     end
     pf.cast = T{ started = os.time() };
     pf.hook = nil;
+    ui.clock_start(pf.session.clock);
 end
 
 local function end_cast()
     local cast = pf.cast;
     if (cast and not cast.outcome and not cast.ending_at) then
         cast.ending_at = os.clock();
+        ui.clock_finish(pf.session.clock);
     end
     pf.hook = nil;
 end
@@ -650,7 +654,9 @@ local function draw_session(width)
 
     local session = pf.session;
     local caught  = session.outcomes.caught or 0;
-    local elapsed = session.started and (os.time() - session.started) or 0;
+    -- Rates use active time, so time spent away from the water doesn't drag them down.
+    local elapsed = ui.clock_seconds(session.clock);
+    local total   = session.started and (os.time() - session.started) or 0;
 
     local hit_rate = '-';
     if (session.casts > 0) then
@@ -682,6 +688,8 @@ local function draw_session(width)
         stat_cell(('To %d'):fmt(DAILY_LIMIT), to_limit);
         stat_cell('Skill', skill and tostring(skill) or '-');
         stat_cell('Gained', ('+%.1f'):fmt(session.skill), gain_color);
+        stat_cell(ui.active_cell(session.clock));
+        stat_cell('Total', total > 0 and duration(total) or '-', COLOR.muted);
         imgui.EndTable();
     end
 end
