@@ -1,6 +1,6 @@
 addon.name    = 'phoenixtracker';
 addon.author  = 'Skold, Grimwald, Slowed';
-addon.version = '2.0.2';
+addon.version = '2.0.3';
 addon.desc    = 'Tracks Phoenix fishing, chocobo digging, harvesting, logging, mining, and excavation.';
 addon.link    = 'https://phoenix-xi.com/';
 
