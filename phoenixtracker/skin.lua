@@ -230,11 +230,34 @@ end
 -----------------------------------
 local font_cache = nil;
 
+-- The large italic digits, or nil when this install's file doesn't have them where expected (the big
+-- counts then use the normal font).
+local function load_numbers(sheet)
+    if (sheet == nil or sheet.width ~= 256 or sheet.height ~= 256) then
+        return nil;
+    end
+    local doubled = datfile.double_alpha(sheet);
+    local texture = doubled and create_texture(doubled);
+    if (texture == nil) then
+        return nil;
+    end
+    return {
+        texture = texture.texture,
+        id      = texture.id,
+        width   = sheet.width,
+        height  = sheet.height,
+        top     = datfile.DIGIT_TOP,
+        bottom  = datfile.DIGIT_BOTTOM,
+        digits  = datfile.DIGITS,
+    };
+end
+
 local function load_font()
     for _, name in ipairs(FONT_FILES) do
         local data = read_rom(name);
         if (data ~= nil) then
-            local moji = datfile.textures(data, { moji = true }, FONT_CHUNKS).moji;
+            local found  = datfile.textures(data, { moji = true, font = true }, FONT_CHUNKS);
+            local moji   = found.moji;
             local glyphs = moji and datfile.glyph_widths(moji);
             if (glyphs ~= nil) then
                 local texture = create_texture(moji);
@@ -247,6 +270,7 @@ local function load_font()
                     width   = moji.width,
                     height  = moji.height,
                     glyphs  = glyphs,
+                    numbers = load_numbers(found.font),
                 }, nil;
             end
         end
@@ -281,6 +305,9 @@ function skin.release()
         end
     end
     if (font_cache) then
+        if (font_cache.numbers) then
+            font_cache.numbers.texture:Release();
+        end
         font_cache.texture:Release();
         font_cache = nil;
     end

@@ -153,8 +153,10 @@ local function classic_theme(window_type)
             peach        = { 1.00, 0.87, 0.48, 1 },
             muted        = { 0.72, 0.72, 0.70, 1 },
             faint        = { 0.56, 0.56, 0.55, 1 },
-            button       = fade(accent, 0.30),
-            button_hover = fade(accent, 0.48),
+            -- Unselected toggle buttons darken the art, so their labels stand out and the selected
+            -- one (royal) reads as lit.
+            button       = { 0, 0, 0, 0.38 },
+            button_hover = fade(accent, 0.30),
             royal        = fade(accent, 0.66),
             tint         = fade(accent, 0.24),
             hover        = fade(accent, 0.80),
@@ -164,6 +166,9 @@ local function classic_theme(window_type)
             success      = { 0.52, 0.90, 0.52, 1 },
         },
         style = { window = 0.0, frame = 2.0 },
+        -- Unselected button labels. Muted grey on the grey-tinted buttons was too hard to read over
+        -- the art, so they sit just below the selected label instead.
+        off_label = { 0.86, 0.86, 0.83, 1 },
         imgui = {
             TitleBg              = shade(panel, 0.80),
             TitleBgActive        = shade(panel, 1.05),
@@ -325,34 +330,97 @@ local function game_font()
     return module and module.font and module.font() or nil;
 end
 
+-- The gap only goes between letters, so centred and right-aligned text lands on the exact middle or
+-- edge rather than a pixel short of it.
 local function game_width(font, text)
     local width = 0;
+    local glyph = nil;
     for index = 1, #text do
-        local glyph = font.glyphs[text:byte(index)];
+        glyph = font.glyphs[text:byte(index)];
         width = width + (glyph and (glyph.width + GAP) or SPACE);
+    end
+    if (glyph) then
+        width = width - GAP;
     end
     return width;
 end
+
+-- The game font's own dark edge is only a shadow on the right and bottom, so over the lighter art
+-- the top and left of each letter faded out. A dark copy one pixel out each way rings every letter.
+local RING       = { { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 }, { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } };
+local RING_ALPHA = 0.9;
 
 -- Draws the letters on whole pixels, centred in the line, as the game draws its own.
 local function draw_game_text(list, font, x, y, color, text)
     local x0   = math.floor(x + 0.5);
     local y0   = math.floor(y + (imgui.GetTextLineHeight() - CELL) / 2 + 0.5);
     local fill = imgui.GetColorU32(color);
-    for index = 1, #text do
-        local code  = text:byte(index);
-        local glyph = font.glyphs[code];
-        if (glyph) then
-            local cell = code - 0x20;
-            local u    = (cell % 64) * CELL + glyph.left;
-            local v    = math.floor(cell / 64) * CELL;
-            list:AddImage(font.id, { x0, y0 }, { x0 + glyph.width, y0 + CELL },
-                { u / font.width, v / font.height }, { (u + glyph.width) / font.width, (v + CELL) / font.height }, fill);
-            x0 = x0 + glyph.width + GAP;
-        else
-            x0 = x0 + SPACE;
+    local dark = imgui.GetColorU32({ 0, 0, 0, RING_ALPHA * (color[4] or 1) });
+    -- Every ring first, so one letter's ring never covers the letter before it.
+    for pass = 1, 2 do
+        local left = x0;
+        for index = 1, #text do
+            local code  = text:byte(index);
+            local glyph = font.glyphs[code];
+            if (glyph) then
+                local cell = code - 0x20;
+                local u    = (cell % 64) * CELL + glyph.left;
+                local v    = math.floor(cell / 64) * CELL;
+                local uv0  = { u / font.width, v / font.height };
+                local uv1  = { (u + glyph.width) / font.width, (v + CELL) / font.height };
+                if (pass == 1) then
+                    for _, offset in ipairs(RING) do
+                        local ox, oy = left + offset[1], y0 + offset[2];
+                        list:AddImage(font.id, { ox, oy }, { ox + glyph.width, oy + CELL }, uv0, uv1, dark);
+                    end
+                else
+                    list:AddImage(font.id, { left, y0 }, { left + glyph.width, y0 + CELL }, uv0, uv1, fill);
+                end
+                left = left + glyph.width + GAP;
+            else
+                left = left + SPACE;
+            end
         end
     end
+end
+
+-- How far the game digits overlap (they lean, and their outlines touch), the room after them, and how
+-- far down the line beside them sits so its letters rest on the digits' baseline.
+local DIGIT_OVERLAP = 2;
+local DIGIT_AFTER   = 6;
+local DIGIT_DROP    = 9;
+
+-- Draws a large count: in the game's own italic digits under Classic with the game font, else in the
+-- given font at twice the size. Leaves the cursor on the same line for what follows it, and returns
+-- how far that should move down to sit on the count's baseline.
+function ui.big_number(color, text, font, font_size)
+    local game    = game_font();
+    local numbers = game and game.numbers;
+    if (numbers and text:match('^%d+$')) then
+        local list   = imgui.GetWindowDrawList();
+        local x, y   = ui.vec2(imgui.GetCursorScreenPos());
+        local height = numbers.bottom - numbers.top;
+        local left   = math.floor(x + 0.5);
+        local top    = math.floor(y + 0.5);
+        local tint   = imgui.GetColorU32(color);
+        for index = 1, #text do
+            local box = numbers.digits[text:sub(index, index)];
+            list:AddImage(numbers.id, { left, top }, { left + box[2] - box[1], top + height },
+                { box[1] / numbers.width, numbers.top / numbers.height }, { box[2] / numbers.width, numbers.bottom / numbers.height }, tint);
+            left = left + box[2] - box[1] - DIGIT_OVERLAP;
+        end
+        imgui.Dummy({ left + DIGIT_OVERLAP - x, height });
+        imgui.SameLine(0, DIGIT_AFTER);
+        return DIGIT_DROP - (imgui.GetTextLineHeight() - CELL) / 2;
+    end
+
+    local small = imgui.GetFontSize();
+    imgui.PushFont(font, font_size * 2.0);
+    local big = imgui.GetFontSize();
+    ui.text(color, text);
+    imgui.PopFont();
+    imgui.SameLine();
+    return (big - small) * 0.8;
 end
 
 -- True when the active theme is drawing the game's window art, so ImGui's own fill is hidden.
@@ -598,10 +666,11 @@ function ui.stat_cell(label, value, color)
 end
 
 function ui.toggle_button(label, on, width)
+    local off = (current.theme and current.theme.off_label) or COLOR.muted;
     imgui.PushStyleColor(ImGuiCol_Button, on and COLOR.royal or COLOR.button);
     imgui.PushStyleColor(ImGuiCol_ButtonHovered, on and COLOR.hover or COLOR.button_hover);
     imgui.PushStyleColor(ImGuiCol_ButtonActive, COLOR.royal);
-    imgui.PushStyleColor(ImGuiCol_Text, on and COLOR.text or COLOR.muted);
+    imgui.PushStyleColor(ImGuiCol_Text, on and COLOR.text or off);
     local shown = label:match('^(.-)##') or label;
     if (not outlined() or shown == '' or not plain(shown)) then
         local clicked = imgui.Button(label, { width, 0 });
@@ -616,7 +685,7 @@ function ui.toggle_button(label, on, width)
     local x1, y1 = ui.vec2(imgui.GetItemRectMax());
     local x = (x0 + x1 - ui.text_width(shown)) / 2;
     local y = (y0 + y1 - imgui.GetTextLineHeight()) / 2;
-    ui.add_text(imgui.GetWindowDrawList(), x, y, on and COLOR.text or COLOR.muted, shown);
+    ui.add_text(imgui.GetWindowDrawList(), x, y, on and COLOR.text or off, shown);
     return clicked;
 end
 

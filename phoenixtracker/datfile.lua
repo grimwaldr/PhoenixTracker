@@ -142,4 +142,34 @@ function datfile.glyph_widths(texture, first, last)
     return widths;
 end
 
+-- The game's large italic digits ('font', 256 x 256, in the same file as moji): the box of each digit
+-- in the texture, outline included. Each box holds only its own digit.
+datfile.DIGIT_TOP    = 131;
+datfile.DIGIT_BOTTOM = 154;
+datfile.DIGITS = {
+    ['0'] = { 16, 34 }, ['1'] = { 38, 51 }, ['2'] = { 54, 73 }, ['3'] = { 75, 93 }, ['4'] = { 91, 112 },
+    ['5'] = { 114, 132 }, ['6'] = { 134, 151 }, ['7'] = { 156, 172 }, ['8'] = { 173, 191 }, ['9'] = { 193, 210 },
+};
+
+-- A copy of a DXT3 texture with its alpha doubled. Some of the game's textures count 0x80 as fully
+-- opaque, so drawn as they are they come out half see-through.
+function datfile.double_alpha(texture)
+    if (texture.fourcc ~= 'DXT3') then
+        return nil;
+    end
+    local doubled = {};
+    for value = 0, 255 do
+        local low  = math.min(15, (value % 16) * 2);
+        local high = math.min(15, math.floor(value / 16) * 2);
+        doubled[value] = string.char(high * 16 + low);
+    end
+    local blocks = texture.blocks;
+    local parts  = {};
+    for offset = 1, #blocks, 16 do
+        parts[#parts + 1] = blocks:sub(offset, offset + 7):gsub('.', function (c) return doubled[c:byte()]; end);
+        parts[#parts + 1] = blocks:sub(offset + 8, offset + 15);
+    end
+    return { name = texture.name, width = texture.width, height = texture.height, fourcc = texture.fourcc, blocks = table.concat(parts) };
+end
+
 return datfile;

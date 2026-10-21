@@ -113,9 +113,8 @@ function helm.new(type_id)
 
         imgui.Spacing();
         ui.text(COLOR.muted, 'TODAY\'S FINDS');
-        imgui.PushFont(font, font_size * 2.0);
-        ui.text(COLOR.text, tostring(daily.finds));
-        imgui.PopFont();
+        ui.big_number(COLOR.text, tostring(daily.finds), font, font_size);
+        imgui.NewLine();
         ui.right_text(width, COLOR.muted, ('%d attempts'):fmt(daily.attempts));
         note(width, COLOR.faint, 'Today\'s totals reset at JST midnight.');
         imgui.Spacing();

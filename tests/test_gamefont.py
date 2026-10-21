@@ -52,15 +52,37 @@ class GlyphWidthTests(unittest.TestCase):
         self.assertIsNone(self.datfile.glyph_widths(self.texture([], fourcc='DXT1')))
 
 
+class DoubleAlphaTests(unittest.TestCase):
+    def test_alpha_doubles_up_to_opaque_and_colour_is_untouched(self):
+        h = Harness()
+        datfile = h.load('datfile')
+        alpha = bytes([0x00, 0x21, 0x84, 0xFF, 0x77, 0x08, 0x80, 0x10])
+        colour = bytes(range(8))
+        doubled = datfile.double_alpha(h.table({'name': 'font', 'width': 4, 'height': 4, 'fourcc': 'DXT3',
+                                                'blocks': alpha + colour}))
+        as_bytes = h.lua.eval('function(t) return { t.blocks:byte(1, -1) } end')
+        self.assertEqual(bytes(as_bytes(doubled).values()),
+                         bytes([0x00, 0x42, 0xF8, 0xFF, 0xEE, 0x0F, 0xF0, 0x20]) + colour)
+        self.assertIsNone(datfile.double_alpha(h.table({'fourcc': 'DXT1', 'blocks': b''})))
+
+    def test_each_digit_box_is_inside_the_sheet_and_in_order(self):
+        digits = Harness().load('datfile').DIGITS
+        boxes = [tuple(digits[str(d)].values()) for d in range(10)]
+        for left, right in boxes:
+            self.assertTrue(0 <= left < right <= 256)
+        self.assertEqual(boxes, sorted(boxes))
+
+
 # A stand-in for the game font: every letter five pixels wide.
 FAKE_FONT = r'''
 local glyphs = {}
+fake_numbers = nil
 for code = 0x21, 0x7E do glyphs[code] = { left = 0, width = 5 } end
 package.preload.skin = function()
     return {
         window_type = function(pinned) return (pinned and pinned >= 0) and pinned or 0 end,
         get = function() return nil end,
-        font = function() return { id = 77, width = 1024, height = 2048, glyphs = glyphs } end,
+        font = function() return { id = 77, width = 1024, height = 2048, glyphs = glyphs, numbers = fake_numbers } end,
         release = function() end,
         draw = function() end,
     }
@@ -85,9 +107,9 @@ class GameFontTests(unittest.TestCase):
     def test_classic_at_scale_one_measures_and_draws_in_the_game_font(self):
         self.h.dispatch('command', command='/ptrack theme classic 2', blocked=False)
         self.render()
-        # Five pixels a letter, one between letters, four for a space.
-        self.assertEqual(self.ui.text_width('AB'), 12)
-        self.assertEqual(self.ui.text_width('A B'), 16)
+        # Five pixels a letter, one between letters, four for a space, nothing after the last letter.
+        self.assertEqual(self.ui.text_width('AB'), 11)
+        self.assertEqual(self.ui.text_width('A B'), 15)
         self.assertGreater(self.images(), 0)
 
     def test_the_game_font_is_only_used_at_scale_one(self):
@@ -95,7 +117,7 @@ class GameFontTests(unittest.TestCase):
         self.h.settings.scale = 1.5
         self.render()
         self.assertEqual(self.images(), 0)
-        self.assertNotEqual(self.ui.text_width('AB'), 12)
+        self.assertNotEqual(self.ui.text_width('AB'), 11)
 
     def test_other_themes_never_use_it(self):
         for theme in ('phoenix', 'neutral'):
@@ -113,6 +135,42 @@ class GameFontTests(unittest.TestCase):
         self.assertGreater(len(list(self.h.lua.globals().drawn_text.values())), 0)
         self.h.dispatch('command', command='/ptrack font game', blocked=False)
         self.assertTrue(self.h.settings.game_font)
+
+    def test_each_letter_is_drawn_with_a_ring_then_its_fill(self):
+        self.h.dispatch('command', command='/ptrack theme classic 2', blocked=False)
+        self.render()
+        self.h.lua.execute('drawn_images = {}')
+        self.ui.text(self.ui.COLOR.text, 'AB')
+        # Eight ring copies and one fill for each of the two letters.
+        self.assertEqual(self.images(), 18)
+
+    def use_numbers(self):
+        self.h.lua.execute("fake_numbers = { id = 88, width = 256, height = 256, top = 131, bottom = 154, "
+                           "digits = require('datfile').DIGITS }")
+
+    def big(self, text):
+        self.h.lua.execute('drawn_images = {}; drawn_text = {}')
+        drop = self.ui.big_number(self.ui.COLOR.text, text, self.h.lua.eval('{}'), 16)
+        return drop, [i for i in self.h.lua.globals().drawn_images.values()]
+
+    def test_the_daily_count_uses_the_game_digits_when_they_loaded(self):
+        self.use_numbers()
+        self.h.dispatch('command', command='/ptrack theme classic 2', blocked=False)
+        self.render()
+        drop, images = self.big('163')
+        self.assertEqual(images, [88, 88, 88])
+        self.assertGreater(drop, 0)
+
+    def test_the_count_falls_back_to_the_normal_font(self):
+        self.h.dispatch('command', command='/ptrack theme classic 2', blocked=False)
+        self.render()
+        for text, numbers in (('163', False), ('1,234', True)):
+            with self.subTest(text=text, numbers=numbers):
+                if numbers:
+                    self.use_numbers()
+                    self.render()
+                _, images = self.big(text)
+                self.assertNotIn(88, images)
 
     def test_a_bad_font_choice_is_refused(self):
         self.h.dispatch('command', command='/ptrack font comic', blocked=False)

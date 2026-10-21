@@ -624,13 +624,8 @@ local function draw_daily(width, scale, font, font_size)
     imgui.Spacing();
     ui.text(COLOR.muted, 'DAILY CATCHES');
 
-    imgui.PushFont(font, font_size * 2.0);
-    local big = imgui.GetFontSize();
-    ui.text(done and COLOR.success or COLOR.text, tostring(daily.points));
-    imgui.PopFont();
-    local small = imgui.GetFontSize();
-    imgui.SameLine();
-    imgui.SetCursorPosY(imgui.GetCursorPosY() + (big - small) * 0.8);
+    local drop = ui.big_number(done and COLOR.success or COLOR.text, tostring(daily.points), font, font_size);
+    imgui.SetCursorPosY(imgui.GetCursorPosY() + drop);
     ui.text(COLOR.muted, ('/ %d'):fmt(DAILY_LIMIT));
     right_text(width, COLOR.ember, ('%d%%'):fmt(math.floor(math.min(daily.points, DAILY_LIMIT) * 100 / DAILY_LIMIT)));
 
