@@ -391,6 +391,7 @@ local function tick()
         pf.daily           = fresh_day();
         pf.limit_announced = false;
         save_daily();
+        ui.session_new_day(pf.session, pf.session.points);
     end
     -- Nothing bites past the limit, so the session's time stops there until the reset.
     if (pf.daily) then
@@ -670,8 +671,9 @@ local function draw_session(width)
 
     local per_hour = '-';
     local to_limit = '-';
-    if (elapsed >= 60 and session.points > 0) then
-        local rate = session.points * 3600 / elapsed;
+    local points = ui.session_count(session, session.points);
+    if (elapsed >= 60 and points > 0) then
+        local rate = points * 3600 / elapsed;
         per_hour = ('%.0f'):fmt(rate);
         to_limit = duration(math.max(0, DAILY_LIMIT - pf.daily.points) / rate * 3600);
     end

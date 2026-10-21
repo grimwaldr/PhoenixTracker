@@ -271,6 +271,7 @@ local imgui = setmetatable({
     GetItemRectMin = function() return 0, 0 end,
     GetItemRectMax = function() return 100, 20 end,
     GetWindowPos = function() return 60, 300 end,
+    GetWindowWidth = function() return 400 end,
     GetTextLineHeight = function() return 16 end,
     GetTextLineHeightWithSpacing = function() return 20 end,
     GetCursorPosY = function() return 0 end,

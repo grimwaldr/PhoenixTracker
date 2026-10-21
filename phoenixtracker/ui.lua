@@ -549,6 +549,20 @@ function ui.session_hold(session, held, now)
     end
 end
 
+-- At the JST reset the session's clocks start over with the new day, and its rates count only what
+-- comes after: count is the session's running total (catches, finds) at the reset.
+function ui.session_new_day(session, count)
+    session.clock    = ui.new_clock();
+    session.total    = 0;
+    session.started  = nil;
+    session.day_base = count;
+end
+
+-- How much of a session count came since its clocks started (the session, or the last JST reset).
+function ui.session_count(session, count)
+    return count - (session.day_base or 0);
+end
+
 -- Seconds from the session's first action, stopping at the daily limit.
 function ui.session_total(session, now)
     now = now or os.time();
@@ -713,6 +727,30 @@ function ui.wrapped_steady(color, text, wrap_x, alike)
         keep = math.max(keep, #wrap_lines(other, room));
     end
     draw_lines(color, wrap_lines(text, room), keep);
+end
+
+-- The name to give imgui.Begin for a window with a title bar. When the title will be drawn in the
+-- game font, ImGui's own is left out. Either way the window's ID comes from id, after the ###.
+function ui.window_title(title, id)
+    if (plain(title) and outlined() and game_font()) then
+        return '###' .. id;
+    end
+    return title .. '###' .. id;
+end
+
+-- Draws the window's title in the game font, where ImGui would put it. Call right after imgui.Begin.
+function ui.draw_title(title)
+    if (not (plain(title) and outlined() and game_font())) then
+        return;
+    end
+    local x, y         = ui.vec2(imgui.GetWindowPos());
+    local width        = imgui.GetWindowWidth();
+    local pad_x, pad_y = ui.vec2(imgui.GetStyle().FramePadding);
+    local list         = imgui.GetWindowDrawList();
+    -- The title bar is outside the window's content, so it needs its own clip rectangle.
+    list:PushClipRect({ x, y }, { x + width, y + imgui.GetFrameHeight() }, false);
+    ui.add_text(list, x + pad_x, y + pad_y, COLOR.text, title);
+    list:PopClipRect();
 end
 
 -- Use in place of imgui.CollapsingHeader. Under an outlined theme ImGui draws the header with its

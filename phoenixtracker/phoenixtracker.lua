@@ -361,8 +361,9 @@ local function render_main(scale, width)
     end
 
     local is_open = T{ true };
-    if (imgui.Begin('PhoenixTracker##phoenixtracker', is_open, ui.window_flags(ctx.settings.locked))) then
+    if (imgui.Begin(ui.window_title('PhoenixTracker', 'phoenixtracker'), is_open, ui.window_flags(ctx.settings.locked))) then
         ui.draw_skin(true, ctx.settings.alpha);
+        ui.draw_title('PhoenixTracker');
         local font      = imgui.GetFont();
         local font_size = imgui.GetFontSize() * scale;
         imgui.PushFont(font, font_size);

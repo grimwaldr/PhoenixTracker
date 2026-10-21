@@ -189,6 +189,18 @@ class GameFontTests(unittest.TestCase):
                 _, images = self.big(text)
                 self.assertNotIn(88, images)
 
+    def begun(self):
+        self.h.lua.execute("begun = {}; local imgui = require('imgui'); "
+                           "imgui.Begin = function(name) begun[#begun + 1] = name; return true end")
+        self.render()
+        return list(self.h.lua.globals().begun.values())
+
+    def test_the_title_is_drawn_in_the_game_font_with_the_same_window_id(self):
+        self.h.dispatch('command', command='/ptrack theme classic 2', blocked=False)
+        self.assertIn('###phoenixtracker', self.begun())
+        self.h.dispatch('command', command='/ptrack theme phoenix', blocked=False)
+        self.assertIn('PhoenixTracker###phoenixtracker', self.begun())
+
     def test_a_bad_font_choice_is_refused(self):
         self.h.dispatch('command', command='/ptrack font comic', blocked=False)
         self.assertTrue(self.h.settings.game_font)

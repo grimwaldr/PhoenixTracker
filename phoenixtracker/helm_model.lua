@@ -120,6 +120,7 @@ function M.new(type_id)
         if (daily.day ~= ui.jst_day()) then
             daily = counters(ui.jst_day());
             save();
+            ui.session_new_day(session, session.finds);
         end
     end
 

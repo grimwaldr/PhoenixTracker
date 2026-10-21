@@ -130,7 +130,7 @@ function helm.new(type_id)
         local elapsed  = ui.clock_seconds(session.clock);
         local total    = session.clock and ui.session_total(session) or 0;
         local hit_rate = session.attempts > 0 and percent(session.finds * 100 / session.attempts) or '-';
-        local per_hour = elapsed >= 60 and ('%.0f'):fmt(session.finds * 3600 / elapsed) or '-';
+        local per_hour = elapsed >= 60 and ('%.0f'):fmt(ui.session_count(session, session.finds) * 3600 / elapsed) or '-';
         local expected = pool.known and percent(pool.obtain_rate) or '-';
 
         if (imgui.BeginTable('##helm_' .. M.key .. '_session', 4, ImGuiTableFlags_SizingStretchSame, { width, 0 })) then

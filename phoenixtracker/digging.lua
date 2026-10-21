@@ -307,6 +307,7 @@ local function rollover_day()
         pd.daily           = fresh_day();
         pd.limit_announced = false;
         save_daily();
+        ui.session_new_day(pd.session, pd.session.found);
     end
 end
 
@@ -616,8 +617,9 @@ local function draw_session(width)
 
     local per_hour = '-';
     local to_limit = '-';
-    if (elapsed >= 60 and session.found > 0) then
-        local rate = session.found * 3600 / elapsed;
+    local found = ui.session_count(session, session.found);
+    if (elapsed >= 60 and found > 0) then
+        local rate = found * 3600 / elapsed;
         per_hour = ('%.0f'):fmt(rate);
         to_limit = duration(math.max(0, DAILY_LIMIT - pd.daily.finds) / rate * 3600);
     end
