@@ -483,6 +483,9 @@ end
 
 -- An action began. now defaults to os.time().
 function ui.clock_start(clock, now)
+    if (clock.held) then
+        return;
+    end
     now = now or os.time();
     if (clock.from ~= nil and now >= clock.stop_at) then
         clock.banked = clock.banked + (clock.stop_at - clock.from);
@@ -494,6 +497,9 @@ end
 
 -- An action ended. For one with no separate end (a dig, a gather), call it right after clock_start.
 function ui.clock_finish(clock, now)
+    if (clock.held) then
+        return;
+    end
     now = now or os.time();
     if (clock.from == nil or now >= clock.stop_at) then
         ui.clock_start(clock, now);
@@ -511,12 +517,46 @@ function ui.clock_seconds(clock, now)
 end
 
 -- The Session grid's Active cell: the label (Active, or Paused once you've stopped) and the time.
+-- Once the daily limit is reached it just shows the time it took.
 function ui.active_cell(clock)
     local seconds, paused = ui.clock_seconds(clock);
     if (seconds <= 0) then
         return 'Active', '-', nil;
     end
+    if (clock.held) then
+        return 'Active', ui.duration(seconds), nil;
+    end
     return paused and 'Paused' or 'Active', ui.duration(seconds), paused and COLOR.gold or nil;
+end
+
+-- Holds a session's clocks while held is true (the daily limit is reached, so there's nothing left
+-- to do until the reset), and lets them run again once it isn't. Total stops where Active does.
+-- The session keeps started (its first action), total (time banked) and clock.
+function ui.session_hold(session, held, now)
+    now = now or os.time();
+    local clock = session.clock;
+    if (held and not clock.held) then
+        local seconds = ui.clock_seconds(clock, now);
+        clock.banked, clock.from, clock.stop_at = seconds, nil, nil;
+        clock.held = true;
+        if (session.started) then
+            session.total   = (session.total or 0) + (now - session.started);
+            session.started = nil;
+        end
+    elseif (not held and clock.held) then
+        clock.held      = nil;
+        session.started = nil;
+    end
+end
+
+-- Seconds from the session's first action, stopping at the daily limit.
+function ui.session_total(session, now)
+    now = now or os.time();
+    local total = session.total or 0;
+    if (session.started and not session.clock.held) then
+        total = total + (now - session.started);
+    end
+    return total;
 end
 
 function ui.duration(seconds)

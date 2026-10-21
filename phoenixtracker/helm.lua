@@ -128,7 +128,7 @@ function helm.new(type_id)
         local session  = snapshot.session;
         -- Rates use active time, so time spent away from gathering doesn't drag them down.
         local elapsed  = ui.clock_seconds(session.clock);
-        local total    = session.started and (os.time() - session.started) or 0;
+        local total    = session.clock and ui.session_total(session) or 0;
         local hit_rate = session.attempts > 0 and percent(session.finds * 100 / session.attempts) or '-';
         local per_hour = elapsed >= 60 and ('%.0f'):fmt(session.finds * 3600 / elapsed) or '-';
         local expected = pool.known and percent(pool.obtain_rate) or '-';

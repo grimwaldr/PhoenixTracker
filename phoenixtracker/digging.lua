@@ -605,7 +605,7 @@ local function draw_session(width)
     local session = pd.session;
     -- Rates use active time, so time spent away from digging doesn't drag them down.
     local elapsed = ui.clock_seconds(session.clock);
-    local total   = session.started and (os.time() - session.started) or 0;
+    local total   = ui.session_total(session);
 
     -- Digs after the daily limit can't find anything, so they're left out of the hit rate.
     local hit_rate = '-';
@@ -826,6 +826,10 @@ local function tick()
         return;
     end
     rollover_day();
+    -- Nothing can be found past the limit, so the session's time stops there until the reset.
+    if (pd.daily) then
+        ui.session_hold(pd.session, pd.daily.finds >= DAILY_LIMIT);
+    end
 end
 
 -----------------------------------

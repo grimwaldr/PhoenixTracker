@@ -392,6 +392,10 @@ local function tick()
         pf.limit_announced = false;
         save_daily();
     end
+    -- Nothing bites past the limit, so the session's time stops there until the reset.
+    if (pf.daily) then
+        ui.session_hold(pf.session, pf.daily.points >= DAILY_LIMIT);
+    end
 end
 
 local function fishing_message(data)
@@ -437,6 +441,7 @@ local function begin_cast()
     end
     pf.cast = T{ started = os.time() };
     pf.hook = nil;
+    pf.session.started = pf.session.started or pf.cast.started;
     ui.clock_start(pf.session.clock);
 end
 
@@ -656,7 +661,7 @@ local function draw_session(width)
     local caught  = session.outcomes.caught or 0;
     -- Rates use active time, so time spent away from the water doesn't drag them down.
     local elapsed = ui.clock_seconds(session.clock);
-    local total   = session.started and (os.time() - session.started) or 0;
+    local total   = ui.session_total(session);
 
     local hit_rate = '-';
     if (session.casts > 0) then

@@ -98,7 +98,7 @@ Session **Casts** includes empty casts and cancellations. **Nothing** counts cas
 
 ## Active time
 
-Every tab's Session section shows **Active**, the time you've actually spent on the activity, and **Total**, the time since your first cast, dig or gather. The Active clock runs from each action until 30 seconds after it ends: from the cast until the fish is caught or lost, or from each dig or gather. If you start again within those 30 seconds it keeps going, otherwise it stops and the cell reads **Paused**. Walking to a new spot, a trip to town or time away doesn't count, and an action the addon never sees end stops counting after 3 minutes. Per hour and the time left to the daily limit use Active time.
+Every tab's Session section shows **Active**, the time you've actually spent on the activity, and **Total**, the time since your first cast, dig or gather. The Active clock runs from each action until 30 seconds after it ends: from the cast until the fish is caught or lost, or from each dig or gather. If you start again within those 30 seconds it keeps going, otherwise it stops and the cell reads **Paused**. Walking to a new spot, a trip to town or time away doesn't count, and an action the addon never sees end stops counting after 3 minutes. Per hour and the time left to the daily limit use Active time. Once you reach the daily limit (200 catches, or 100 dig finds), Active and Total both stop, since there's nothing left to get until the JST midnight reset. They carry on from there with your first cast or dig of the new day.
 
 ## What's on the line
 

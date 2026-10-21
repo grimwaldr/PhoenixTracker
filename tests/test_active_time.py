@@ -78,6 +78,31 @@ class FishingActiveTimeTests(unittest.TestCase):
         label, value, _ = self.ui.active_cell(self.pf.session.clock)
         self.assertEqual((label, value), ('Active', '2m 20s'))
 
+    def times(self):
+        session = self.pf.session
+        _, active, _ = self.ui.active_cell(session.clock)
+        return active, self.ui.duration(self.ui.session_total(session))
+
+    def test_both_clocks_stop_at_the_daily_limit_and_run_again_after_the_reset(self):
+        self.h.present()
+        self.cast(40)
+        self.h.command('set', ['200'])
+        self.h.advance(1)
+        self.h.present()                  # the limit is seen on the next tick
+        held = self.times()
+        self.h.advance(1800)
+        self.cast(30)                     # casting on past the limit counts for nothing
+        self.h.advance(600)
+        self.h.present()
+        self.assertEqual(self.times(), held)
+        self.assertEqual(self.ui.active_cell(self.pf.session.clock)[0], 'Active')
+
+        self.h.advance(1, day='2026-10-09')
+        self.h.present()                  # JST midnight: a fresh day
+        self.cast(20)
+        self.assertEqual(held, ('0m 41s', '0m 41s'))          # the cast and a second after it
+        self.assertEqual(self.times(), ('1m 01s', '1m 01s'))  # plus the 20 second cast after the reset
+
 
 if __name__ == '__main__':
     unittest.main()
