@@ -261,7 +261,7 @@ Pick a theme under the cog, from the right-click menu, or with `/ptrack theme`. 
 
 Classic follows Config > Windows > Shared > Window Type in the game's menu, and changes within a second when you change it. To keep one look whatever the game is set to, pick a type under Window type in the settings, or use `/ptrack theme classic <1-8>`. Game goes back to following the game.
 
-Classic also draws its text the way the game draws its own, with a dark one-pixel outline and a slightly heavier stroke, so it stays readable on the busier backgrounds. It uses the same font as the other themes, drawn differently; no font is loaded. Text with characters outside plain English letters and symbols, such as Japanese names, is drawn normally.
+Classic also draws its text the way the game draws its own, with a dark one-pixel outline and a slightly heavier stroke, so it stays readable on the busier backgrounds. It uses the same font as the other themes, drawn differently; no font is loaded. To change the font itself, set it in Ashita's boot configuration under `[ashita.imgui.fonts]`, which changes it for Ashita and every ImGui addon. Text with characters outside plain English letters and symbols, such as Japanese names, is drawn normally.
 
 The art is read from your own game install (`ROM/0/14.DAT` to `21.DAT`, one file for each Window Type). Nothing from the game ships with the addon. If those files can't be found, Classic says so once in chat and uses plain colours that match the Window Type instead.
 

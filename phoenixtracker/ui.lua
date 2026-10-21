@@ -461,9 +461,9 @@ function ui.wrapped(color, text, wrap_x)
     imgui.Dummy({ widest, math.max(1, #lines) * height });
 end
 
--- Use in place of imgui.CollapsingHeader. Under an outlined theme the header draws its label in
--- a see-through colour, so it keeps the same ID (and open or closed state), and the outlined label
--- goes on top.
+-- Use in place of imgui.CollapsingHeader. Under an outlined theme the outlined label is drawn
+-- exactly over ImGui's own, which covers it. The header keeps its ID (and open or closed state),
+-- and its arrow, which ImGui draws in the text colour.
 function ui.header(label, flags)
     if (not outlined() or not plain(label)) then
         return imgui.CollapsingHeader(label, flags);
@@ -473,9 +473,7 @@ function ui.header(label, flags)
     -- further left), past the arrow, inside the frame padding.
     local x, y         = ui.vec2(imgui.GetCursorScreenPos());
     local pad_x, pad_y = ui.vec2(imgui.GetStyle().FramePadding);
-    imgui.PushStyleColor(ImGuiCol_Text, COLOR.clear);
     local open = imgui.CollapsingHeader(label, flags);
-    imgui.PopStyleColor(1);
     ui.add_text(imgui.GetWindowDrawList(), x + imgui.GetFontSize() + pad_x * 3, y + pad_y, COLOR.text, label);
     return open;
 end
