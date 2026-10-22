@@ -301,5 +301,5 @@ Each tab is a module that returns a table with `key`, `label`, `defaults` and th
 - **Skold** made Phoenix Fish Track, which became the Fishing tab, and the Harvesting, Logging, Mining and Excavation tabs.
 - **Grimwald** made the Digging tab and turned the addon into Phoenix Tracker, with a tab for each activity.
 - **Frankie** worked out how to read and draw the game's window art in [craftbook](https://github.com/Frankie-hz/craftbook), which the Classic theme's `skin.lua` is adapted from, along with its colours for each Window Type.
-- **Reverie** came up with drawing text in the game's outlined style without loading a font, in phoenixchat. Classic's text uses the same idea.
+- **Reverie** suggested building the font from the game files, and came up with drawing text in the game's style without loading a font into ImGui, in phoenixchat. Classic's text is built on both.
 - **Slowed** made the On the Line panel that lists what could be on your line, and the On Hook Display choices that show whether to reel in.
