@@ -303,3 +303,4 @@ Each tab is a module that returns a table with `key`, `label`, `defaults` and th
 - **Frankie** worked out how to read and draw the game's window art in [craftbook](https://github.com/Frankie-hz/craftbook), which the Classic theme's `skin.lua` is adapted from, along with its colours for each Window Type.
 - **Reverie** suggested building the font from the game files, and came up with drawing text in the game's style without loading a font into ImGui, in phoenixchat. Classic's text is built on both.
 - **Slowed** made the On the Line panel that lists what could be on your line, and the On Hook Display choices that show whether to reel in.
+- **Derp** tested the themes in game and found the HELM window resizing on every gather and Classic's font flickering when targeting.
