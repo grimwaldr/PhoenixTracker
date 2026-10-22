@@ -314,16 +314,30 @@ end
 function ui.begin_frame(scale, game_font)
     frame.scale     = scale;
     frame.game_font = game_font ~= false;
-    frame.base      = imgui.GetFontSize();
+    frame.base      = nil;
+end
+
+-- Call right after imgui.Begin for each of the addon's windows, before pushing any font, and
+-- ui.window_ended before imgui.End. The font size there is the window's own, which is what the game
+-- font stands in for. It used to be read before any window began, but other addons can leave ImGui
+-- at another size between windows (one did when targeting), and the font flickered between the two.
+function ui.window_begun()
+    frame.base = imgui.GetFontSize();
+end
+
+function ui.window_ended()
+    frame.base = nil;
 end
 
 -- The game font, when it should draw text at the current size; otherwise nil.
 local function game_font()
     local theme = current.theme;
-    if (not theme or not theme.outline or not frame.game_font or frame.scale ~= 1 or not frame.base) then
+    if (not theme or not theme.outline or not frame.game_font or frame.scale ~= 1) then
         return nil;
     end
-    if (math.abs(imgui.GetFontSize() - frame.base) > 0.01) then
+    -- Inside a window, only at the window's own size: not in text pushed larger, like the daily count.
+    -- Outside one (measuring, or naming a window before it begins) nothing of ours has been pushed.
+    if (frame.base ~= nil and math.abs(imgui.GetFontSize() - frame.base) > 0.01) then
         return nil;
     end
     local module = skin();

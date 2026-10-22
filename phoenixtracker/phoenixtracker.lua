@@ -369,6 +369,7 @@ local function render_main(scale, width)
 
     local is_open = T{ true };
     if (imgui.Begin(ui.window_title('PhoenixTracker', 'phoenixtracker'), is_open, ui.window_flags(ctx.settings.locked))) then
+        ui.window_begun();
         ui.draw_skin(true, ctx.settings.alpha);
         ui.draw_title('PhoenixTracker');
         local font      = imgui.GetFont();
@@ -382,6 +383,7 @@ local function render_main(scale, width)
         remember_position();
         imgui.PopFont();
     end
+    ui.window_ended();
     imgui.End();
 
     if (not is_open[1]) then

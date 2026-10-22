@@ -232,6 +232,25 @@ class GameFontTests(unittest.TestCase):
         self.assertIn('Slider ', calls)                 # ImGui draws no value of its own
         self.assertGreater(self.images(), 0)
 
+    def test_another_addon_leaving_imgui_at_another_size_does_not_switch_fonts(self):
+        # Between windows ImGui can be left at another addon's size (one did when targeting). Inside
+        # our own window it's back to the window's size, so the game font must stay on.
+        self.h.dispatch('command', command='/ptrack theme classic 2', blocked=False)
+        self.h.lua.execute("""
+            local imgui = require('imgui')
+            local size = 21
+            begun = {}
+            imgui.GetFontSize = function() return size end
+            imgui.PushFont = function() end
+            imgui.PopFont = function() end
+            imgui.Begin = function(name) begun[#begun + 1] = name; size = 16; return true end
+            imgui.End = function() size = 21 end
+        """)
+        self.render()
+        self.assertGreater(self.images(), 0)
+        self.assertIn('###phoenixtracker', list(self.h.lua.globals().begun.values()))
+        self.assertEqual(self.ui.text_width('AB'), 11)
+
     def test_a_bad_font_choice_is_refused(self):
         self.h.dispatch('command', command='/ptrack font comic', blocked=False)
         self.assertTrue(self.h.settings.game_font)
